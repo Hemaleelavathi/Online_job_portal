@@ -1,0 +1,205 @@
+:root {
+    --cc-primary: #2563eb;
+    --cc-primary-dark: #1d4ed8;
+    --cc-navy: #0f172a;
+    --cc-navy-mid: #1e293b;
+    --cc-surface: #f8fafc;
+    --cc-text: #0f172a;
+    --cc-muted: #64748b;
+    --cc-border: #e2e8f0;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: var(--cc-surface);
+    color: var(--cc-text);
+}
+
+/* Navbar */
+.cc-navbar {
+    border-color: var(--cc-border) !important;
+}
+
+.cc-brand-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--cc-primary), #4f46e5);
+    color: #ffffff;
+    font-size: 1rem;
+}
+
+.cc-brand-text {
+    font-size: 1.25rem;
+    letter-spacing: -0.02em;
+    color: var(--cc-navy);
+}
+
+.cc-brand-text span {
+    color: var(--cc-primary);
+}
+
+.cc-navbar .nav-link {
+    font-weight: 500;
+    color: var(--cc-muted);
+    transition: color 0.15s ease;
+}
+
+.cc-navbar .nav-link:hover,
+.cc-navbar .nav-link.active {
+    color: var(--cc-primary);
+}
+
+/* Buttons */
+.cc-btn-primary {
+    background-color: var(--cc-primary);
+    border-color: var(--cc-primary);
+    border-radius: 0.6rem;
+    font-weight: 500;
+}
+
+.cc-btn-primary:hover,
+.cc-btn-primary:focus {
+    background-color: var(--cc-primary-dark);
+    border-color: var(--cc-primary-dark);
+}
+
+.cc-btn-outline {
+    color: var(--cc-primary);
+    border-color: var(--cc-primary);
+    border-radius: 0.6rem;
+    font-weight: 500;
+}
+
+.cc-btn-outline:hover,
+.cc-btn-outline:focus {
+    background-color: var(--cc-primary);
+    border-color: var(--cc-primary);
+    color: #ffffff;
+}
+
+/* Hero Section */
+.cc-hero {
+    background: radial-gradient(circle at top right, rgba(59, 130, 246, 0.35), transparent 45%),
+                linear-gradient(135deg, var(--cc-navy) 0%, #172554 55%, #1e3a8a 100%);
+}
+
+.cc-hero-badge {
+    background-color: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #e0f2fe;
+    font-weight: 500;
+}
+
+.cc-hero-title {
+    letter-spacing: -0.03em;
+}
+
+.cc-search-box {
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.cc-input-group .form-control {
+    font-size: 0.95rem;
+    color: var(--cc-text);
+}
+
+.cc-input-group .form-control::placeholder {
+    color: #94a3b8;
+}
+
+@media (min-width: 768px) {
+    .cc-search-divider {
+        border-left: 1px solid var(--cc-border);
+    }
+}
+
+.cc-quick-tag {
+    color: #e2e8f0;
+    background-color: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 0.2rem 0.75rem;
+    border-radius: 999px;
+    text-decoration: none;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.cc-quick-tag:hover {
+    background-color: rgba(255, 255, 255, 0.24);
+    color: #ffffff;
+}
+
+/* Featured Job Cards */
+.cc-job-card {
+    border-radius: 1rem;
+    border: 1px solid var(--cc-border) !important;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.cc-job-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 14px 28px -10px rgba(15, 23, 42, 0.12) !important;
+    border-color: #bfdbfe !important;
+}
+
+.cc-company-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    letter-spacing: 0.03em;
+}
+
+.cc-job-type-badge {
+    background-color: #eff6ff;
+    color: var(--cc-primary);
+    font-weight: 600;
+    font-size: 0.75rem;
+    padding: 0.4em 0.8em;
+}
+
+.cc-skill-badge {
+    background-color: #f1f5f9;
+    color: #334155;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.45rem;
+    padding: 0.35em 0.65em;
+    font-size: 0.75rem;
+}
+
+/* Footer */
+.cc-footer {
+    background-color: var(--cc-navy);
+}
+
+.cc-footer-desc {
+    max-width: 420px;
+    font-size: 0.92rem;
+    line-height: 1.6;
+}
+
+.cc-footer-link {
+    color: rgba(248, 250, 252, 0.75);
+    text-decoration: none;
+    font-size: 0.92rem;
+    transition: color 0.15s ease;
+}
+
+.cc-footer-link:hover {
+    color: #ffffff;
+}
+
+/* Auth Cards */
+.cc-auth-card {
+    border-radius: 1rem;
+    border: 1px solid var(--cc-border) !important;
+}
+
+.cc-auth-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    background-color: #eff6ff;
+    color: var(--cc-primary);
+    font-size: 1.4rem;
+}

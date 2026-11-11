@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+
+{% block title %}CareerConnect | Apply for {{ job.title }}{% endblock %}
+
+{% block content %}
+<section class="py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-12 col-lg-8">
+                <div class="mb-3">
+                    <a href="{% url 'job_detail' job.id %}" class="text-decoration-none small fw-semibold">
+                        <i class="bi bi-arrow-left me-1"></i> Back to Job Details
+                    </a>
+                </div>
+
+                <div class="card border-0 shadow-sm cc-auth-card mb-4">
+                    <div class="card-body p-4">
+                        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-3">
+                            <div>
+                                <span class="badge rounded-pill cc-job-type-badge mb-2">{{ job.job_type }}</span>
+                                <h1 class="h4 fw-bold mb-1">Apply for {{ job.title }}</h1>
+                                <div class="text-muted small">
+                                    <span class="me-3"><i class="bi bi-building me-1"></i>{{ job.company }}</span>
+                                    <span class="me-3"><i class="bi bi-geo-alt me-1 text-primary"></i>{{ job.location }}</span>
+                                    {% if job.salary %}
+                                        <span class="me-3"><i class="bi bi-cash-stack me-1 text-success"></i>{{ job.salary }}</span>
+                                    {% endif %}
+                                    {% if job.experience %}
+                                        <span><i class="bi bi-award me-1 text-warning"></i>{{ job.experience }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm cc-auth-card">
+                    <div class="card-body p-4 p-md-5">
+                        <h2 class="h5 fw-bold mb-1">Application Details</h2>
+                        <p class="text-muted small mb-4">
+                            Applying as <strong>{{ profile.full_name }}</strong> ({{ request.user.email }}).
+                        </p>
+
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger py-2 small" role="alert">
+                                {% for error in form.non_field_errors %}
+                                    <div>{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+
+                        <form method="post" enctype="multipart/form-data" novalidate>
+                            {% csrf_token %}
+                            <input type="hidden" name="next" value="{{ next|default:'' }}">
+
+                            <div class="mb-3">
+                                <label for="{{ form.resume.id_for_label }}" class="form-label fw-semibold small">
+                                    {{ form.resume.label }}
+                                </label>
+                                {% if profile.resume %}
+                                    <div class="alert alert-light border py-2 px-3 small mb-2 d-flex justify-content-between align-items-center">
+                                        <span>
+                                            <i class="bi bi-file-earmark-pdf-fill text-danger me-1"></i>
+                                            Profile resume on file: <strong>{{ profile.resume_filename }}</strong>
+                                        </span>
+                                        <a href="{{ profile.resume.url }}" target="_blank" rel="noopener" class="text-decoration-none fw-semibold">View</a>
+                                    </div>
+                                {% endif %}
+                                <input
+                                    type="file"
+                                    name="{{ form.resume.name }}"
+                                    id="{{ form.resume.id_for_label }}"
+                                    accept=".pdf,application/pdf"
+                                    class="form-control {% if form.resume.errors %}is-invalid{% endif %}"
+                                >
+                                <div class="form-text">{{ form.resume.help_text }}</div>
+                                {% for error in form.resume.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+
+                            <div class="mb-4">
+                                <label for="{{ form.cover_note.id_for_label }}" class="form-label fw-semibold small">
+                                    {{ form.cover_note.label }}
+                                </label>
+                                <textarea
+                                    name="{{ form.cover_note.name }}"
+                                    id="{{ form.cover_note.id_for_label }}"
+                                    rows="4"
+                                    class="form-control {% if form.cover_note.errors %}is-invalid{% endif %}"
+                                    placeholder="Briefly share why you are a great fit for this role (optional)..."
+                                >{{ form.cover_note.value|default:'' }}</textarea>
+                                {% for error in form.cover_note.errors %}
+                                    <div class="invalid-feedback">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+
+                            <div class="d-flex flex-wrap gap-2">
+                                <button type="submit" class="btn btn-primary cc-btn-primary px-4 py-2 fw-semibold">
+                                    Submit Application <i class="bi bi-send ms-1"></i>
+                                </button>
+                                <a href="{% url 'job_detail' job.id %}" class="btn btn-outline-secondary px-4 py-2">
+                                    Cancel
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,17 @@
+{% with history=application.status_history.all %}
+    {% if history %}
+        <div class="mt-2 pt-2 border-top d-flex flex-wrap align-items-center gap-1 small text-muted">
+            <span class="fw-semibold text-dark me-1">
+                <i class="bi bi-clock-history me-1 text-primary"></i>History:
+            </span>
+            {% for entry in history %}
+                <span class="badge rounded-pill {{ entry.status_badge_class }}">
+                    {{ entry.get_status_display }} &bull; {{ entry.changed_at|date:"M d, Y H:i" }}
+                </span>
+                {% if not forloop.last %}
+                    <i class="bi bi-arrow-right text-muted"></i>
+                {% endif %}
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endwith %}

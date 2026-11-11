@@ -1,0 +1,401 @@
+{% extends 'base.html' %}
+
+{% block title %}CareerConnect | Job Seeker Dashboard{% endblock %}
+
+{% block content %}
+<section class="py-4 py-lg-5">
+    <div class="container">
+        <!-- Welcome Banner -->
+        <div class="card border-0 shadow-sm mb-4 cc-auth-card">
+            <div class="card-body p-4 p-md-5 d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-4">
+                <div>
+                    <span class="badge rounded-pill cc-job-type-badge mb-2">
+                        <i class="bi bi-person-badge me-1"></i>{{ profile.get_role_display }}
+                    </span>
+                    <h1 class="h2 fw-bold mb-1">Welcome, {{ profile.full_name }}!</h1>
+                    <p class="text-muted mb-0">
+                        Manage your CareerConnect profile, upload your PDF resume, and apply to open positions.
+                    </p>
+                </div>
+                <div class="d-flex flex-wrap align-items-center gap-3">
+                    <div class="bg-light rounded-3 px-3 py-2 text-center border">
+                        <div class="fw-bold fs-5 text-primary">{{ available_jobs|length }}</div>
+                        <div class="small text-muted">Available Jobs</div>
+                    </div>
+                    <div class="bg-light rounded-3 px-3 py-2 text-center border">
+                        <div class="fw-bold fs-5 text-success">{{ total_applications }}</div>
+                        <div class="small text-muted">Applied Jobs</div>
+                    </div>
+                    <form method="post" action="{% url 'logout' %}" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-outline-danger px-3 py-2 fw-semibold">
+                            <i class="bi bi-box-arrow-right me-1"></i> Logout
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4 align-items-start">
+            <!-- Left Column: Profile Display & Update Form -->
+            <div class="col-12 col-lg-5">
+                <!-- Profile Information -->
+                <div class="card border-0 shadow-sm mb-4 cc-auth-card">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h2 class="h5 fw-bold mb-0">
+                                <i class="bi bi-person-lines-fill text-primary me-2"></i>Profile Information
+                            </h2>
+                            <span class="badge bg-primary-subtle text-primary rounded-pill">{{ profile.get_role_display }}</span>
+                        </div>
+
+                        <dl class="row mb-0 small gy-2">
+                            <dt class="col-sm-4 text-muted">Full Name</dt>
+                            <dd class="col-sm-8 fw-semibold mb-1">{{ profile.full_name }}</dd>
+
+                            <dt class="col-sm-4 text-muted">Email</dt>
+                            <dd class="col-sm-8 mb-1">{{ request.user.email }}</dd>
+
+                            <dt class="col-sm-4 text-muted">Phone</dt>
+                            <dd class="col-sm-8 mb-1">{{ profile.phone|default:"Not provided" }}</dd>
+
+                            <dt class="col-sm-4 text-muted">Location</dt>
+                            <dd class="col-sm-8 mb-1">{{ profile.location|default:"Not provided" }}</dd>
+
+                            <dt class="col-sm-4 text-muted">Qualification</dt>
+                            <dd class="col-sm-8 mb-1">{{ profile.qualification|default:"Not provided" }}</dd>
+
+                            <dt class="col-sm-4 text-muted">Skills</dt>
+                            <dd class="col-sm-8 mb-1">
+                                {% if profile.skill_list %}
+                                    <div class="d-flex flex-wrap gap-1">
+                                        {% for skill in profile.skill_list %}
+                                            <span class="badge cc-skill-badge fw-medium">{{ skill }}</span>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    <span class="text-muted">No skills added yet</span>
+                                {% endif %}
+                            </dd>
+
+                            <dt class="col-sm-4 text-muted">Resume (PDF)</dt>
+                            <dd class="col-sm-8 mb-0">
+                                {% if profile.resume %}
+                                    <div class="d-flex flex-wrap align-items-center gap-2">
+                                        <span class="text-success fw-medium">
+                                            <i class="bi bi-file-earmark-pdf-fill text-danger me-1"></i>{{ profile.resume_filename }}
+                                        </span>
+                                        <a href="{{ profile.resume.url }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary py-0 px-2">
+                                            View PDF
+                                        </a>
+                                    </div>
+                                {% else %}
+                                    <span class="text-muted">No PDF resume uploaded</span>
+                                {% endif %}
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
+
+                <!-- Update Profile & Upload Resume Form -->
+                <div class="card border-0 shadow-sm cc-auth-card">
+                    <div class="card-body p-4">
+                        <h2 class="h5 fw-bold mb-1">
+                            <i class="bi bi-pencil-square text-primary me-2"></i>Update Profile
+                        </h2>
+                        <p class="text-muted small mb-3">
+                            Keep your contact details, qualification, skills, and PDF resume up to date.
+                        </p>
+
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger py-2 small" role="alert">
+                                {% for error in form.non_field_errors %}
+                                    <div>{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+
+                        <form method="post" enctype="multipart/form-data" novalidate>
+                            {% csrf_token %}
+
+                            <div class="mb-3">
+                                <label for="{{ form.full_name.id_for_label }}" class="form-label fw-semibold small">
+                                    {{ form.full_name.label }}
+                                </label>
+                                <input
+                                    type="text"
+                                    name="{{ form.full_name.name }}"
+                                    id="{{ form.full_name.id_for_label }}"
+                                    value="{{ form.full_name.value|default:'' }}"
+                                    class="form-control {% if form.full_name.errors %}is-invalid{% endif %}"
+                                    maxlength="150"
+                                    required
+                                >
+                                {% for error in form.full_name.errors %}
+                                    <div class="invalid-feedback">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+
+                            <div class="row g-2 mb-3">
+                                <div class="col-sm-6">
+                                    <label for="{{ form.phone.id_for_label }}" class="form-label fw-semibold small">
+                                        {{ form.phone.label }}
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="{{ form.phone.name }}"
+                                        id="{{ form.phone.id_for_label }}"
+                                        value="{{ form.phone.value|default:'' }}"
+                                        class="form-control {% if form.phone.errors %}is-invalid{% endif %}"
+                                        placeholder="e.g. +91 98765 43210"
+                                        maxlength="20"
+                                    >
+                                    {% for error in form.phone.errors %}
+                                        <div class="invalid-feedback">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                                <div class="col-sm-6">
+                                    <label for="{{ form.location.id_for_label }}" class="form-label fw-semibold small">
+                                        {{ form.location.label }}
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="{{ form.location.name }}"
+                                        id="{{ form.location.id_for_label }}"
+                                        value="{{ form.location.value|default:'' }}"
+                                        class="form-control {% if form.location.errors %}is-invalid{% endif %}"
+                                        placeholder="e.g. Bengaluru, IN"
+                                        maxlength="120"
+                                    >
+                                    {% for error in form.location.errors %}
+                                        <div class="invalid-feedback">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="{{ form.qualification.id_for_label }}" class="form-label fw-semibold small">
+                                    {{ form.qualification.label }}
+                                </label>
+                                <input
+                                    type="text"
+                                    name="{{ form.qualification.name }}"
+                                    id="{{ form.qualification.id_for_label }}"
+                                    value="{{ form.qualification.value|default:'' }}"
+                                    class="form-control {% if form.qualification.errors %}is-invalid{% endif %}"
+                                    placeholder="e.g. B.Tech in Computer Science"
+                                    maxlength="150"
+                                >
+                                {% for error in form.qualification.errors %}
+                                    <div class="invalid-feedback">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="{{ form.skills.id_for_label }}" class="form-label fw-semibold small">
+                                    {{ form.skills.label }}
+                                </label>
+                                <input
+                                    type="text"
+                                    name="{{ form.skills.name }}"
+                                    id="{{ form.skills.id_for_label }}"
+                                    value="{{ form.skills.value|default:'' }}"
+                                    class="form-control {% if form.skills.errors %}is-invalid{% endif %}"
+                                    placeholder="e.g. Python, Django, SQL, Bootstrap 5"
+                                    maxlength="300"
+                                >
+                                <div class="form-text">{{ form.skills.help_text }}</div>
+                                {% for error in form.skills.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+
+                            <div class="mb-4">
+                                <label for="{{ form.resume.id_for_label }}" class="form-label fw-semibold small">
+                                    {{ form.resume.label }}
+                                </label>
+                                <input
+                                    type="file"
+                                    name="{{ form.resume.name }}"
+                                    id="{{ form.resume.id_for_label }}"
+                                    accept=".pdf,application/pdf"
+                                    class="form-control {% if form.resume.errors %}is-invalid{% endif %}"
+                                >
+                                <div class="form-text">{{ form.resume.help_text }}</div>
+                                {% for error in form.resume.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary cc-btn-primary py-2 fw-semibold">
+                                    <i class="bi bi-check2-circle me-1"></i> Save Profile
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Applied Jobs & Available Jobs -->
+            <div class="col-12 col-lg-7">
+                <!-- Applied Jobs & Application History -->
+                <div id="application-history" class="card border-0 shadow-sm mb-4 cc-auth-card">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <h2 class="h5 fw-bold mb-0">
+                                    <i class="bi bi-file-earmark-check text-success me-2"></i>Applied Jobs &amp; Application History
+                                </h2>
+                                <p class="text-muted small mb-0 mt-1">
+                                    Track your live application status and hiring stage transitions.
+                                </p>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <a href="{% url 'applied_jobs' %}" class="small fw-semibold text-decoration-none">View All</a>
+                                <span class="badge bg-success-subtle text-success rounded-pill">
+                                    {{ total_applications }} Total
+                                </span>
+                            </div>
+                        </div>
+
+                        {% if status_summary %}
+                            <div class="d-flex flex-wrap gap-2 mb-3">
+                                <a
+                                    href="{% url 'job_seeker_dashboard' %}#application-history"
+                                    class="btn btn-sm {% if not selected_status %}btn-dark{% else %}btn-outline-secondary{% endif %} rounded-pill px-3"
+                                >
+                                    All ({{ total_applications }})
+                                </a>
+                                {% for item in status_summary %}
+                                    <a
+                                        href="{% url 'job_seeker_dashboard' %}?status={{ item.value }}#application-history"
+                                        class="btn btn-sm {% if selected_status == item.value %}btn-primary cc-btn-primary{% else %}btn-outline-secondary{% endif %} rounded-pill px-3"
+                                    >
+                                        {{ item.label }} ({{ item.count }})
+                                    </a>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+
+                        {% if applications %}
+                            <div class="list-group list-group-flush">
+                                {% for application in applications %}
+                                    <div class="list-group-item px-0 py-3">
+                                        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-start gap-2">
+                                            <div>
+                                                <h3 class="h6 fw-bold mb-1">
+                                                    <a href="{% url 'job_detail' application.job.id %}" class="text-decoration-none text-dark">
+                                                        {{ application.job.title }}
+                                                    </a>
+                                                </h3>
+                                                <div class="text-muted small">
+                                                    <span class="me-3"><i class="bi bi-building me-1"></i>{{ application.job.company }}</span>
+                                                    <span class="me-3"><i class="bi bi-geo-alt me-1"></i>{{ application.job.location }}</span>
+                                                    <span><i class="bi bi-calendar3 me-1"></i>Applied {{ application.applied_at|date:"M d, Y" }}</span>
+                                                </div>
+                                            </div>
+                                            <div class="d-flex flex-wrap align-items-center gap-2">
+                                                <span class="badge rounded-pill cc-job-type-badge">{{ application.job.job_type }}</span>
+                                                <span class="badge rounded-pill {{ application.status_badge_class }}">{{ application.get_status_display }}</span>
+                                                {% if application.effective_resume %}
+                                                    <a href="{% url 'download_applicant_resume' application.id %}" class="btn btn-sm btn-outline-primary py-0 px-2">
+                                                        <i class="bi bi-download me-1"></i>Resume
+                                                    </a>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        {% include 'jobs/_status_history.html' with application=application %}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="text-center py-4 bg-light rounded-3 border">
+                                <i class="bi bi-inbox fs-3 text-muted d-block mb-2"></i>
+                                <p class="text-muted small mb-0">
+                                    {% if selected_status %}
+                                        No applications with status "{{ selected_status|title }}" yet.
+                                    {% else %}
+                                        You haven't applied to any jobs yet. Browse Available Jobs below to apply.
+                                    {% endif %}
+                                </p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Available Jobs -->
+                <div class="card border-0 shadow-sm cc-auth-card">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h2 class="h5 fw-bold mb-0">
+                                <i class="bi bi-briefcase text-primary me-2"></i>Available Jobs
+                            </h2>
+                            <span class="badge bg-primary-subtle text-primary rounded-pill">
+                                {{ available_jobs|length }} Open
+                            </span>
+                        </div>
+
+                        {% if available_jobs %}
+                            <div class="d-flex flex-column gap-3">
+                                {% for job in available_jobs %}
+                                    <div class="border rounded-4 p-3 p-md-4 cc-job-card bg-white">
+                                        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-start gap-3">
+                                            <div class="d-flex align-items-start gap-3">
+                                                <div class="cc-company-avatar text-white fw-bold d-flex align-items-center justify-content-center flex-shrink-0" style="background-color: {{ job.accent_color }};">
+                                                    {{ job.initials }}
+                                                </div>
+                                                <div>
+                                                    <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                                                        <h3 class="h6 fw-bold mb-0">{{ job.title }}</h3>
+                                                        <span class="badge rounded-pill cc-job-type-badge">{{ job.job_type }}</span>
+                                                    </div>
+                                                    <div class="text-muted small mb-2">
+                                                        <span class="me-3"><i class="bi bi-building me-1"></i>{{ job.company }}</span>
+                                                        <span class="me-3"><i class="bi bi-geo-alt me-1 text-primary"></i>{{ job.location }}</span>
+                                                        {% if job.salary %}
+                                                            <span class="me-3"><i class="bi bi-cash-stack me-1 text-success"></i>{{ job.salary }}</span>
+                                                        {% endif %}
+                                                        {% if job.experience %}
+                                                            <span class="me-3"><i class="bi bi-award me-1 text-warning"></i>{{ job.experience }}</span>
+                                                        {% endif %}
+                                                        <span><i class="bi bi-calendar3 me-1"></i>{{ job.posted_date|date:"M d, Y" }}</span>
+                                                    </div>
+                                                    <p class="text-muted small mb-2">{{ job.description }}</p>
+                                                    <div class="d-flex flex-wrap gap-1">
+                                                        {% for skill in job.skill_list %}
+                                                            <span class="badge cc-skill-badge fw-medium">{{ skill }}</span>
+                                                        {% endfor %}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="flex-shrink-0 d-grid gap-2">
+                                                {% if job.id in applied_job_ids %}
+                                                    <a href="{% url 'applied_jobs' %}" class="btn btn-success btn-sm px-3 fw-semibold">
+                                                        <i class="bi bi-check-circle me-1"></i> Applied
+                                                    </a>
+                                                {% else %}
+                                                    <a href="{% url 'apply_to_job' job.id %}?next={% url 'applied_jobs' %}" class="btn btn-primary cc-btn-primary btn-sm px-3 fw-semibold w-100">
+                                                        Apply Now
+                                                    </a>
+                                                {% endif %}
+                                                <a href="{% url 'job_detail' job.id %}" class="btn btn-outline-secondary btn-sm px-3">
+                                                    View Details
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="text-center py-4 bg-light rounded-3 border">
+                                <p class="text-muted small mb-0">No active jobs are currently available.</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

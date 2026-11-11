@@ -1,0 +1,191 @@
+{% extends 'base.html' %}
+
+{% block title %}CareerConnect | Find Your Dream Job{% endblock %}
+
+{% block content %}
+<section class="cc-hero text-white position-relative overflow-hidden py-5">
+    <div class="container py-lg-5">
+        <div class="row justify-content-center text-center">
+            <div class="col-lg-9 col-xl-8">
+                <span class="badge rounded-pill cc-hero-badge px-3 py-2 mb-3">
+                    <i class="bi bi-stars me-1"></i> Trusted Online Job Portal
+                </span>
+                <h1 class="display-4 fw-bold mb-3 cc-hero-title">Find Your Dream Job</h1>
+                <p class="lead text-light text-opacity-75 mb-4 px-md-4">
+                    Discover verified full-time, hybrid, and remote opportunities from top tech teams and fast-growing companies.
+                </p>
+
+                <form method="get" action="{% url 'home' %}#featured-jobs" class="cc-search-box bg-white p-2 p-md-3 rounded-4 shadow-lg text-start">
+                    <div class="row g-2 align-items-center">
+                        <div class="col-12 col-md-5">
+                            <label for="job-search-query" class="visually-hidden">Job title, skill, or company</label>
+                            <div class="input-group cc-input-group">
+                                <span class="input-group-text bg-transparent border-0 text-muted">
+                                    <i class="bi bi-search"></i>
+                                </span>
+                                <input
+                                    id="job-search-query"
+                                    type="text"
+                                    name="q"
+                                    value="{{ search_query }}"
+                                    class="form-control border-0 shadow-none"
+                                    placeholder="Job title, skill, or company"
+                                >
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-4 cc-search-divider">
+                            <label for="job-search-location" class="visually-hidden">Location</label>
+                            <div class="input-group cc-input-group">
+                                <span class="input-group-text bg-transparent border-0 text-muted">
+                                    <i class="bi bi-geo-alt"></i>
+                                </span>
+                                <input
+                                    id="job-search-location"
+                                    type="text"
+                                    name="location"
+                                    value="{{ search_location }}"
+                                    class="form-control border-0 shadow-none"
+                                    placeholder="City or Remote"
+                                >
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-3 d-grid">
+                            <button type="submit" class="btn btn-primary cc-btn-primary py-2 px-4 fw-semibold">
+                                Search Jobs
+                            </button>
+                        </div>
+                    </div>
+                </form>
+
+                <div class="d-flex flex-wrap justify-content-center align-items-center gap-2 mt-3 small">
+                    <span class="text-light text-opacity-75">Popular:</span>
+                    <a href="{% url 'home' %}?q=Python#featured-jobs" class="cc-quick-tag">Python</a>
+                    <a href="{% url 'home' %}?q=Django#featured-jobs" class="cc-quick-tag">Django</a>
+                    <a href="{% url 'home' %}?location=Remote#featured-jobs" class="cc-quick-tag">Remote</a>
+                    <a href="{% url 'home' %}?q=Designer#featured-jobs" class="cc-quick-tag">UI/UX</a>
+                </div>
+
+                <div class="row g-3 justify-content-center mt-4 pt-2">
+                    <div class="col-4 col-sm-auto px-sm-4">
+                        <div class="fw-bold fs-4">2,400+</div>
+                        <div class="small text-light text-opacity-75">Active Jobs</div>
+                    </div>
+                    <div class="col-4 col-sm-auto px-sm-4 border-start border-light border-opacity-25">
+                        <div class="fw-bold fs-4">850+</div>
+                        <div class="small text-light text-opacity-75">Companies</div>
+                    </div>
+                    <div class="col-4 col-sm-auto px-sm-4 border-start border-light border-opacity-25">
+                        <div class="fw-bold fs-4">100%</div>
+                        <div class="small text-light text-opacity-75">Verified Roles</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section id="featured-jobs" class="py-5 bg-light-subtle">
+    <div class="container py-lg-3">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-end gap-3 mb-4">
+            <div>
+                <span class="text-primary fw-semibold text-uppercase small">Explore Opportunities</span>
+                <h2 class="fw-bold mt-1 mb-1">Featured Jobs</h2>
+                <p class="text-muted mb-0">
+                    {% if is_filtered %}
+                        Showing {{ featured_jobs|length }} matching role{{ featured_jobs|length|pluralize }}
+                        {% if search_query %}for "<strong>{{ search_query }}</strong>"{% endif %}
+                        {% if search_location %}in "<strong>{{ search_location }}</strong>"{% endif %}
+                    {% else %}
+                        Hand-picked opportunities from leading employers hiring right now.
+                    {% endif %}
+                </p>
+            </div>
+            {% if is_filtered %}
+                <div>
+                    <a href="{% url 'home' %}#featured-jobs" class="btn btn-outline-secondary btn-sm px-3">
+                        <i class="bi bi-x-circle me-1"></i> Clear Search
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+
+        {% if featured_jobs %}
+            <div class="row g-4">
+                {% for job in featured_jobs %}
+                    <div class="col-12 col-md-6 col-lg-4">
+                        <article class="card cc-job-card h-100 border-0 shadow-sm">
+                            <div class="card-body d-flex flex-column p-4">
+                                <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="cc-company-avatar text-white fw-bold d-flex align-items-center justify-content-center flex-shrink-0" style="background-color: {{ job.accent_color }};">
+                                            {{ job.initials }}
+                                        </div>
+                                        <div>
+                                            <div class="fw-semibold text-dark small">{{ job.company }}</div>
+                                            <div class="text-muted small">
+                                                <i class="bi bi-clock me-1"></i>{{ job.posted_date|date:"M d, Y" }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <span class="badge rounded-pill cc-job-type-badge">{{ job.job_type }}</span>
+                                </div>
+
+                                <h3 class="h5 fw-bold text-dark mb-2">
+                                    <a href="{% url 'job_detail' job.id %}" class="text-decoration-none text-dark">{{ job.title }}</a>
+                                </h3>
+
+                                <div class="d-flex flex-wrap gap-3 text-muted small mb-3">
+                                    <span><i class="bi bi-geo-alt me-1 text-primary"></i>{{ job.location }}</span>
+                                    {% if job.salary %}
+                                        <span><i class="bi bi-cash-stack me-1 text-success"></i>{{ job.salary }}</span>
+                                    {% endif %}
+                                    {% if job.experience %}
+                                        <span><i class="bi bi-award me-1 text-warning"></i>{{ job.experience }}</span>
+                                    {% endif %}
+                                </div>
+
+                                <p class="text-muted small mb-3 flex-grow-1">
+                                    {{ job.description }}
+                                </p>
+
+                                <div class="d-flex flex-wrap gap-2 mb-4">
+                                    {% for skill in job.skill_list %}
+                                        <span class="badge cc-skill-badge fw-medium">{{ skill }}</span>
+                                    {% endfor %}
+                                </div>
+
+                                <div class="d-grid gap-2">
+                                    {% if user.is_authenticated and user.profile.role == 'job_seeker' %}
+                                        {% if job.id in applied_job_ids %}
+                                            <a href="{% url 'applied_jobs' %}" class="btn btn-success fw-semibold">
+                                                <i class="bi bi-check-circle me-1"></i> Applied
+                                            </a>
+                                        {% else %}
+                                            <a href="{% url 'apply_to_job' job.id %}?next={% url 'applied_jobs' %}" class="btn btn-outline-primary cc-btn-outline fw-semibold">
+                                                Apply Now <i class="bi bi-arrow-right ms-1"></i>
+                                            </a>
+                                        {% endif %}
+                                    {% else %}
+                                        <a href="{% url 'job_detail' job.id %}" class="btn btn-outline-primary cc-btn-outline fw-semibold">
+                                            View &amp; Apply <i class="bi bi-arrow-right ms-1"></i>
+                                        </a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </article>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="card border-0 shadow-sm text-center p-5">
+                <div class="card-body">
+                    <i class="bi bi-search fs-1 text-muted mb-3 d-block"></i>
+                    <h3 class="h5 fw-bold mb-2">No matching jobs found</h3>
+                    <p class="text-muted mb-3">Try adjusting your search keywords or location filter.</p>
+                    <a href="{% url 'home' %}#featured-jobs" class="btn btn-primary cc-btn-primary px-4">Show All Featured Jobs</a>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

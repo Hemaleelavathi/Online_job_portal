@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+
+{% block title %}CareerConnect | Applied Jobs{% endblock %}
+
+{% block content %}
+<section class="py-5">
+    <div class="container">
+        <div class="card border-0 shadow-sm mb-4 cc-auth-card">
+            <div class="card-body p-4 p-md-5 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                <div>
+                    <span class="badge rounded-pill bg-success-subtle text-success mb-2">
+                        <i class="bi bi-file-earmark-check me-1"></i> Job Seeker Applications
+                    </span>
+                    <h1 class="h2 fw-bold mb-1">My Applied Jobs</h1>
+                    <p class="text-muted mb-0">
+                        Track all positions you have applied for, their current status, and the resume submitted.
+                    </p>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="{% url 'job_list' %}" class="btn btn-primary cc-btn-primary px-3 fw-semibold">
+                        <i class="bi bi-search me-1"></i> Browse Available Jobs
+                    </a>
+                    <a href="{% url 'job_seeker_dashboard' %}" class="btn btn-outline-secondary px-3">
+                        Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        {% if status_summary %}
+            <div class="d-flex flex-wrap gap-2 mb-4">
+                <a
+                    href="{% url 'applied_jobs' %}"
+                    class="btn btn-sm {% if not selected_status %}btn-dark{% else %}btn-outline-secondary{% endif %} rounded-pill px-3"
+                >
+                    All ({{ total_applications }})
+                </a>
+                {% for item in status_summary %}
+                    <a
+                        href="{% url 'applied_jobs' %}?status={{ item.value }}"
+                        class="btn btn-sm {% if selected_status == item.value %}btn-primary cc-btn-primary{% else %}btn-outline-secondary{% endif %} rounded-pill px-3"
+                    >
+                        {{ item.label }} ({{ item.count }})
+                    </a>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% if applications %}
+            <div class="row g-4">
+                {% for application in applications %}
+                    <div class="col-12 col-lg-6">
+                        <article class="card border-0 shadow-sm cc-job-card h-100">
+                            <div class="card-body p-4 d-flex flex-column">
+                                <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="cc-company-avatar text-white fw-bold d-flex align-items-center justify-content-center flex-shrink-0" style="background-color: {{ application.job.accent_color }};">
+                                            {{ application.job.initials }}
+                                        </div>
+                                        <div>
+                                            <h2 class="h5 fw-bold mb-0">
+                                                <a href="{% url 'job_detail' application.job.id %}" class="text-decoration-none text-dark">
+                                                    {{ application.job.title }}
+                                                </a>
+                                            </h2>
+                                            <div class="text-muted small">{{ application.job.company }}</div>
+                                        </div>
+                                    </div>
+                                    <span class="badge rounded-pill {{ application.status_badge_class }}">
+                                        {{ application.get_status_display }}
+                                    </span>
+                                </div>
+
+                                <div class="d-flex flex-wrap gap-3 text-muted small mb-3">
+                                    <span><i class="bi bi-geo-alt me-1 text-primary"></i>{{ application.job.location }}</span>
+                                    <span><i class="bi bi-briefcase me-1"></i>{{ application.job.job_type }}</span>
+                                    {% if application.job.salary %}
+                                        <span><i class="bi bi-cash-stack me-1 text-success"></i>{{ application.job.salary }}</span>
+                                    {% endif %}
+                                    <span><i class="bi bi-calendar3 me-1"></i>Applied {{ application.applied_at|date:"M d, Y" }}</span>
+                                </div>
+
+                                {% if application.cover_note %}
+                                    <p class="text-muted small bg-light rounded-3 p-3 border mb-3">
+                                        <strong>Cover Note:</strong> {{ application.cover_note }}
+                                    </p>
+                                {% endif %}
+
+                                {% include 'jobs/_status_history.html' with application=application %}
+
+                                <div class="mt-auto d-flex flex-wrap justify-content-between align-items-center gap-2 pt-3 border-top">
+                                    <div class="d-flex flex-wrap align-items-center gap-2">
+                                        {% if application.effective_resume %}
+                                            <a href="{% url 'download_applicant_resume' application.id %}" class="small fw-semibold text-decoration-none">
+                                                <i class="bi bi-file-earmark-pdf-fill text-danger me-1"></i>{{ application.resume_filename }}
+                                            </a>
+                                        {% else %}
+                                            <span class="text-muted small">No resume attached</span>
+                                        {% endif %}
+                                    </div>
+                                    <a href="{% url 'job_detail' application.job.id %}" class="btn btn-sm btn-outline-primary cc-btn-outline">
+                                        View Job Details
+                                    </a>
+                                </div>
+                            </div>
+                        </article>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="card border-0 shadow-sm text-center p-5 cc-auth-card">
+                <div class="card-body">
+                    <i class="bi bi-inbox fs-1 text-muted d-block mb-3"></i>
+                    <h2 class="h5 fw-bold mb-2">No Applied Jobs Found</h2>
+                    <p class="text-muted mb-4">
+                        {% if selected_status %}
+                            No applications match the "{{ selected_status|title }}" status filter.
+                        {% else %}
+                            You haven't submitted any applications yet. Search open positions and upload your PDF resume to apply.
+                        {% endif %}
+                    </p>
+                    <a href="{% url 'job_list' %}" class="btn btn-primary cc-btn-primary px-4">
+                        Explore Available Jobs
+                    </a>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}
