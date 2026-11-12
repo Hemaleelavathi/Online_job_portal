@@ -1,6 +1,6 @@
 # CareerConnect — Online Job Portal
 
-**CareerConnect** is a full-stack web application built with **Django**, **SQLite**, **HTML5/CSS3**, **JavaScript**, and **Bootstrap 5** that connects Job Seekers, Employers, and Platform Administrators in a role-based hiring portal. It provides authenticated user registration and login, dedicated role dashboards, job posting management, job search and filtering, job bookmarking (**Saved Jobs**), private PDF resume upload and authorized downloads, application status tracking with chronological audit history, environment-based configuration, and an in-portal Admin Dashboard alongside Django Admin.
+**CareerConnect** is a responsive full-stack web application built with **Python**, **Django**, **SQLite**, **HTML5/CSS3**, **JavaScript**, and **Bootstrap 5** that connects Job Seekers, Employers, and Platform Administrators through dedicated role-based workflows. The portal supports user registration and login, responsive job discovery and filtering, **Saved Jobs** bookmarking, job applications with duplicate prevention, private PDF resume validation and authorized downloads, application status tracking with audit history, an in-portal Admin Dashboard, Django Admin customization, and environment-based secret management.
 
 ---
 
@@ -11,12 +11,13 @@
   - [Job Seeker Features](#job-seeker-features)
   - [Employer Features](#employer-features)
   - [Admin Features](#admin-features)
+- [Secure Resume Handling & Environment Configuration](#secure-resume-handling--environment-configuration)
 - [Technologies Used](#technologies-used)
 - [Project Folder Structure](#project-folder-structure)
-- [Installation Instructions](#installation-instructions)
-- [Environment Configuration](#environment-configuration)
-- [Database Migration Commands](#database-migration-commands)
-- [How to Run the Project](#how-to-run-the-project)
+- [Installation & Setup (Windows PowerShell)](#installation--setup-windows-powershell)
+- [Configuring `.env` Safely](#configuring-env-safely)
+- [Database Migration & Server Commands](#database-migration--server-commands)
+- [GitHub Repository Information](#github-repository-information)
 - [Future Enhancements](#future-enhancements)
 - [Author](#author)
 
@@ -25,25 +26,21 @@
 ## Main Features
 
 - **Role-Based Authentication & Access Control**
-  - User registration with Full Name, Email, Password, Confirm Password, and Role selection (`Job Seeker` or `Employer`).
-  - Case-insensitive duplicate email checks, Django password validation/hashing, and `UserProfile` creation.
-  - Email-and-password authentication with role-aware dashboard routing (`/accounts/dashboard/`) and HTTP-only session and CSRF cookies.
-  - POST-only logout and custom `403 Access Denied` handling via `@role_required` and `@staff_required` decorators.
-- **Public Job Directory, Search & Bookmarking**
-  - Responsive Home page (`/`) and Find Jobs directory (`/jobs/`) displaying active job listings with company initials avatars and skill tags.
-  - Keyword search across job title, company name, description, job type, required skills, and experience, combined with Location and Job Type (`Full-Time`, `Part-Time`, `Remote`, `Hybrid`, `Contract`) filters.
-  - Pre-seeded sample job listings included via Django data migrations (`jobs/migrations/0002_seed_sample_jobs.py` and `0004_populate_job_experience.py`).
-  - Saved Jobs (`SavedJob`) model with database-level uniqueness per `(user, job)` for Job Seekers.
-- **Private PDF Resume Handling & Validation**
-  - Strict PDF validation enforcing `.pdf` extension, `%PDF-` file header signature, and a 5 MB maximum upload size (`accounts/validators.py`).
-  - No unauthenticated `/media/` static exposure (`CareerConnect/urls.py`).
-  - Authorized download (`attachment`) and inline browser preview (`?inline=1`) endpoints returning `Content-Type: application/pdf` and `X-Content-Type-Options: nosniff` (`accounts/files.py`).
-- **Application Status Tracking & History**
-  - Four application workflow stages: **Applied**, **Shortlisted**, **Rejected**, and **Selected**.
-  - Automatic chronological transition tracking via `ApplicationStatusHistory` (recording status, timestamp, and the user who made the change).
-- **Security & Privacy Hardening**
-  - Secret keys, debug mode, allowed hosts, and SMTP/email settings loaded from environment variables / `.env` (`.env.example` template provided; `.env` excluded by `.gitignore`).
-  - Strict cross-user isolation, ownership checks on employer job/applicant management, CSRF protection on all state-changing forms, and employer login emails hidden from public job detail pages.
+  - Registration with Full Name, Email, Password, Confirm Password, and Role selection (`Job Seeker` or `Employer`).
+  - Case-insensitive duplicate email checks, Django password hashing/validation, and automatic `UserProfile` creation.
+  - Email-and-password authentication with role-based dashboard routing (`/accounts/dashboard/`).
+  - POST-only logout, CSRF protection on all state-changing forms, and custom `403 Access Denied` handling via `@role_required` and `@staff_required`.
+- **Responsive Frontend & Job Discovery**
+  - High-contrast dark blue/indigo hero section with keyword and location search, quick filter tags, live platform counts, and role-aware call-to-action buttons (`Home` `/`).
+  - Responsive navigation bar (`navbar-expand-md`) displaying horizontal links on desktop/tablet screens and an interactive hamburger menu on mobile viewports, backed by progressive JavaScript enhancements (`static/js/main.js`).
+  - Dedicated **Find Jobs** page (`/jobs/`) with keyword search (`q` across title, company, description, job type, skills, and experience) plus `location` and `job_type` (`Full-Time`, `Part-Time`, `Remote`, `Hybrid`, `Contract`) filters.
+  - Pre-seeded sample job postings loaded via Django data migrations (`jobs/migrations/0002_seed_sample_jobs.py` and `0004_populate_job_experience.py`).
+- **Saved Jobs Bookmarking**
+  - Bookmark active jobs and manage saved opportunities on `/jobs/saved/` via the `SavedJob` model.
+  - Duplicate bookmark prevention enforced both in view logic (`get_or_create`) and at the database level (`UniqueConstraint` on `(user, job)`).
+- **Application Tracking & Chronological History**
+  - Four application statuses: **Applied**, **Shortlisted**, **Rejected**, and **Selected**.
+  - Automatic transition history recorded in `ApplicationStatusHistory` (capturing status, timestamp, and author of each change).
 
 ---
 
@@ -51,33 +48,43 @@
 
 ### Job Seeker Features
 
-- Register and log in as a Job Seeker to access the protected **Job Seeker Dashboard** (`/accounts/dashboard/job-seeker/`).
-- View and update profile information: Full Name, Phone, Location, Qualification, Comma-separated Skills, and PDF Resume (with live client-side file hint and server-side PDF verification).
-- Securely view (`?inline=1`) or download your own profile resume via `/accounts/profile/resume/`.
-- Browse available open positions and inspect full job details (`/jobs/<job_id>/`).
-- Bookmark active listings and manage bookmarked roles on the **Saved Jobs** page (`/jobs/saved/`).
-- Submit job applications (`/jobs/<job_id>/apply/`) with an optional cover note and an optional application-specific PDF resume (or automatically reuse your saved profile PDF resume).
-- Prevent duplicate applications per job (`UniqueConstraint` on `(job, applicant)`).
-- Track application history and filter submissions by status on both the dashboard and the dedicated **Applied Jobs** page (`/jobs/applied/`).
+- Protected **Job Seeker Dashboard** (`/accounts/dashboard/job-seeker/`) with live counters for Available Jobs, Saved Jobs, and Applied Jobs.
+- View and update profile information: Full Name, Phone, Location, Highest Qualification, Comma-separated Skills, and PDF Resume (with client-side file extension/size hints and server-side validation).
+- Securely preview (`?inline=1`) or download your own profile resume via `/accounts/profile/resume/`.
+- Save and unsave active jobs directly from job cards, job detail pages, or `/jobs/saved/`.
+- Submit applications (`/jobs/<job_id>/apply/`) with an optional cover note and custom PDF resume (or automatically reuse your uploaded profile resume), with duplicate application prevention (`UniqueConstraint` on `(job, applicant)`).
+- View application statuses, status filter pills, and timeline history on both the dashboard and **My Applied Jobs** (`/jobs/applied/`).
 
 ### Employer Features
 
-- Register and log in as an Employer to access the protected **Employer Dashboard** (`/accounts/dashboard/employer/`).
-- Manage company profile details (Employer Name, Company Name, Company Description, Location, and Phone).
-- Create, edit, toggle active status, and delete job postings (`/jobs/create/`, `/jobs/<job_id>/edit/`, `/jobs/<job_id>/delete/`), with ownership checks ensuring employers can only manage their own listings.
-- Review applicants scoped strictly to the employer's own jobs, filter by job posting or application status, view qualification/skills/cover notes, view or download applicant PDF resumes (`/jobs/applications/<application_id>/resume/`), and update application statuses (`Applied`, `Shortlisted`, `Rejected`, `Selected`).
+- Protected **Employer Dashboard** (`/accounts/dashboard/employer/`) for managing company profile details (Employer Name, Company Name, Company Description, Location, and Phone).
+- Create, edit, activate/deactivate, and delete job postings (`/jobs/create/`, `/jobs/<job_id>/edit/`, `/jobs/<job_id>/delete/`), strictly scoped to jobs owned by the logged-in Employer.
+- Review applicants for your own jobs, filter by job posting or application status, view applicant qualifications/skills/cover notes, view or download applicant PDF resumes (`/jobs/applications/<application_id>/resume/`), and update application statuses.
 
 ### Admin Features
 
-- **In-Portal Admin Dashboard (`/accounts/dashboard/admin/`)** *(restricted to authenticated `is_staff` / superuser accounts)*:
-  - Platform summary metrics: **Total Users** (with staff count), **Employers**, **Job Seekers**, **Total Jobs** (with active/inactive breakdown), and **Applications**.
-  - Recent Registered Users and Recent Job Postings overview panels (with links to inspect both active and inactive jobs or filter applications by job).
-  - Full **Application Management** across all employers: search by applicant name, email, job title, or company; filter by job posting or status pills; view/download applicant PDF resumes; inspect timeline history; and update application statuses.
+- **In-Portal Admin Dashboard (`/accounts/dashboard/admin/`)** *(restricted to `is_staff` / superusers)*:
+  - Platform summary metrics: **Total Users** (with staff count), **Employers**, **Job Seekers**, **Total Jobs** (active vs. inactive), and **Applications**.
+  - Recent Registered Users and Recent Job Postings overview cards.
+  - Cross-employer **Application Management** with search (applicant name, email, job title, company), job/status filters, timeline inspection, resume download/preview, and status updates.
 - **Django Admin Panel (`/admin/`)**:
-  - `UserProfileAdmin`: search and filter profiles by role and registration date.
-  - `JobAdmin`: filter jobs by type, active status, and posted date.
-  - `JobApplicationAdmin`: view applicant name, email, job title, company, application date, status, and authorized `View Resume` / `Download` links; search by applicant name/email or job title/company; filter by status and application date hierarchy; inline status editing, bulk status actions, and read-only `ApplicationStatusHistoryInline`.
-  - `SavedJobAdmin`: search and filter saved job bookmarks by user, job title, company, and saved timestamp.
+  - `UserProfileAdmin`, `JobAdmin`, `JobApplicationAdmin` (clickable resume links, search, status/date filters, inline status updates, bulk actions, and `ApplicationStatusHistoryInline`), and `SavedJobAdmin`.
+
+---
+
+## Secure Resume Handling & Environment Configuration
+
+- **Private Resume Access Control**
+  - Direct unauthenticated requests under `/media/` are disabled in [CareerConnect/urls.py](CareerConnect/urls.py) (`404` even when `DEBUG=True`).
+  - Uploaded PDFs are validated by `validate_pdf_resume` (`accounts/validators.py`) for `.pdf` extension, `%PDF-` header bytes, and a 5 MB maximum file size.
+  - Resumes are served exclusively through [accounts/files.py](accounts/files.py) with `Content-Type: application/pdf` and `X-Content-Type-Options: nosniff`:
+    - `/accounts/profile/resume/` serves only the authenticated user's own profile resume.
+    - `/jobs/applications/<application_id>/resume/` restricts access to the hiring Employer, the applicant, or staff/admin users (`403 Forbidden` otherwise).
+  - Public job detail views do not expose private employer email addresses.
+- **Environment Variable Hardening**
+  - [CareerConnect/settings.py](CareerConnect/settings.py) loads configuration from a local `.env` file (or OS environment variables) and contains **no hardcoded `SECRET_KEY` fallback**.
+  - HTTP-only session/CSRF cookies, `X_FRAME_OPTIONS = 'DENY'`, `SECURE_CONTENT_TYPE_NOSNIFF = True`, and automatic HTTPS/HSTS hardening when `DJANGO_DEBUG=False`.
+  - Django `MAILERS` and SMTP credentials are configurable via environment variables (`DJANGO_EMAIL_BACKEND`, `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USE_TLS`, `EMAIL_USE_SSL`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `DEFAULT_FROM_EMAIL`).
 
 ---
 
@@ -85,10 +92,10 @@
 
 | Layer | Technology |
 | --- | --- |
-| **Backend Framework** | Python 3, Django `6.1.1` |
+| **Backend** | Python 3, Django `6.1.1` |
 | **Database** | SQLite (`db.sqlite3`) |
-| **Frontend & Styling** | HTML5, CSS3 (`static/css/style.css`), JavaScript (`static/js/main.js`), Bootstrap `5.3.3`, Bootstrap Icons `1.11.3`, Google Fonts (`Inter`) |
-| **Dependencies** | `Django==6.1.1`, `asgiref==3.12.1`, `sqlparse==0.6.0`, `tzdata==2026.3` |
+| **Frontend** | HTML5, CSS3 (`static/css/style.css`), JavaScript (`static/js/main.js`), Bootstrap `5.3.3`, Bootstrap Icons `1.11.3`, Google Fonts (`Inter`) |
+| **Python Packages** | `Django==6.1.1`, `asgiref==3.12.1`, `sqlparse==0.6.0`, `tzdata==2026.3` |
 
 ---
 
@@ -162,139 +169,138 @@ job_portal_online/
 │   │   └── style.css
 │   └── js/
 │       └── main.js
-├── media/
-│   ├── application_resumes/
-│   └── resumes/
 ├── .env.example
 ├── .gitignore
-├── db.sqlite3
 ├── manage.py
 ├── README.md
 └── requirements.txt
 ```
 
+*(Runtime artifacts such as `.env`, `db.sqlite3`, `media/`, `staticfiles/`, and `backups/` are excluded from Git tracking via `.gitignore`.)*
+
 ---
 
-## Installation Instructions
+## Installation & Setup (Windows PowerShell)
 
-1. **Navigate to the project root directory:**
+1. **Clone the repository and open the project directory:**
 
-   ```bash
-   cd job_portal_online
+   ```powershell
+   git clone https://github.com/Hemaleelavathi/Online_job_portal.git
+   cd Online_job_portal
    ```
 
-2. **Create and activate a virtual environment:**
+   *(If you already have the local `job_portal_online` workspace folder, `cd` directly into it.)*
 
-   - **Windows (PowerShell):**
-     ```powershell
-     python -m venv venv
-     .\venv\Scripts\Activate.ps1
-     ```
-   - **Windows (Command Prompt):**
-     ```cmd
-     python -m venv venv
-     venv\Scripts\activate.bat
-     ```
-   - **macOS / Linux:**
-     ```bash
-     python3 -m venv venv
-     source venv/bin/activate
-     ```
+2. **Create and activate a Python virtual environment:**
+
+   ```powershell
+   python -m venv venv
+   .\venv\Scripts\Activate.ps1
+   ```
+
+   *(If PowerShell blocks script activation, run `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser` once.)*
 
 3. **Install dependencies:**
 
-   ```bash
+   ```powershell
    pip install -r requirements.txt
    ```
 
 ---
 
-## Environment Configuration
+## Configuring `.env` Safely
 
-1. **Create your local `.env` file from the template** (`.env` is ignored by Git):
+`CareerConnect/settings.py` requires `DJANGO_SECRET_KEY` (or `SECRET_KEY`) from `.env` or OS environment variables and refuses to start with empty or placeholder keys.
 
-   - **Windows (PowerShell):**
-     ```powershell
-     Copy-Item .env.example .env
-     ```
-   - **macOS / Linux:**
-     ```bash
-     cp .env.example .env
-     ```
+1. **Copy the placeholder template to a local `.env` file:**
 
-2. **Generate a strong `DJANGO_SECRET_KEY`** and paste it into `.env`:
+   ```powershell
+   Copy-Item .env.example .env
+   ```
 
-   ```bash
+2. **Generate a unique cryptographic secret key:**
+
+   ```powershell
    python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
    ```
 
-3. Review `.env.example` for optional `DJANGO_DEBUG`, `DJANGO_ALLOWED_HOSTS`, `DJANGO_EMAIL_BACKEND`, `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USE_TLS`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `DEFAULT_FROM_EMAIL`, and HTTPS security settings (`DJANGO_DEBUG=False` requires `DJANGO_SECRET_KEY` and enforces secure cookies, SSL redirect, and HSTS).
+3. **Update `.env` locally (never commit or share this file):**
+   - Replace the placeholder value of `DJANGO_SECRET_KEY` in `.env` with the newly generated key.
+   - Keep `DJANGO_DEBUG=True` and `DJANGO_ALLOWED_HOSTS=127.0.0.1,localhost` for local development.
+   - Set `DJANGO_DEBUG=False` and configure real `DJANGO_ALLOWED_HOSTS` and SMTP settings (`DJANGO_EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend`, `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`) before deploying to production.
+   - Verify `.env` is ignored before any commit:
+
+   ```powershell
+   git check-ignore -v .env
+   ```
 
 ---
 
-## Database Migration Commands
+## Database Migration & Server Commands
 
-Run migrations to initialize or update the SQLite schema and load the seeded sample jobs:
+1. **Apply migrations and load seeded sample jobs:**
 
-```bash
-python manage.py makemigrations
-python manage.py migrate
-```
+   ```powershell
+   python manage.py makemigrations
+   python manage.py migrate
+   ```
 
-To inspect migration status or validate Django configuration:
+2. **Verify Django configuration and migration status:**
 
-```bash
-python manage.py showmigrations
-python manage.py check
-```
+   ```powershell
+   python manage.py showmigrations
+   python manage.py check
+   ```
 
----
+3. **Create an administrator account *(optional, for `/accounts/dashboard/admin/` and `/admin/`)*:**
 
-## How to Run the Project
-
-1. **Create an administrator (superuser) account** *(to access `/accounts/dashboard/admin/` and `/admin/`)*:
-
-   ```bash
+   ```powershell
    python manage.py createsuperuser
    ```
 
-2. **Start the Django development server:**
+4. **Run the development server:**
 
-   ```bash
+   ```powershell
    python manage.py runserver
    ```
 
-3. **Access the portal in your browser:**
+5. **Run the full automated test suite (63 tests):**
 
-   - **Home Page:** `http://127.0.0.1:8000/`
-   - **Browse Active Jobs:** `http://127.0.0.1:8000/jobs/`
-   - **Saved Jobs (Job Seeker):** `http://127.0.0.1:8000/jobs/saved/`
-   - **Applied Jobs (Job Seeker):** `http://127.0.0.1:8000/jobs/applied/`
-   - **User Registration:** `http://127.0.0.1:8000/accounts/register/`
-   - **User Login:** `http://127.0.0.1:8000/accounts/login/`
-   - **Role-Based Dashboard Redirect:** `http://127.0.0.1:8000/accounts/dashboard/`
-   - **In-Portal Admin Dashboard:** `http://127.0.0.1:8000/accounts/dashboard/admin/`
-   - **Django Admin Interface:** `http://127.0.0.1:8000/admin/`
-
-4. **Run checks and the automated test suite:**
-
-   ```bash
-   python manage.py check
+   ```powershell
    python manage.py test -v 2
    ```
+
+6. **Key portal URLs:**
+   - **Home:** `http://127.0.0.1:8000/`
+   - **Find Jobs:** `http://127.0.0.1:8000/jobs/`
+   - **Saved Jobs (Job Seeker):** `http://127.0.0.1:8000/jobs/saved/`
+   - **Applied Jobs (Job Seeker):** `http://127.0.0.1:8000/jobs/applied/`
+   - **Register / Login:** `http://127.0.0.1:8000/accounts/register/` | `http://127.0.0.1:8000/accounts/login/`
+   - **Role Dashboard:** `http://127.0.0.1:8000/accounts/dashboard/`
+   - **Admin Dashboard / Django Admin:** `http://127.0.0.1:8000/accounts/dashboard/admin/` | `http://127.0.0.1:8000/admin/`
+
+---
+
+## GitHub Repository Information
+
+- **Repository URL:** `https://github.com/Hemaleelavathi/Online_job_portal.git`
+- **Default Branch:** `main`
+- **Safe Commit Checklist:**
+  - Confirm `git status` does not list `.env` or `db.sqlite3`.
+  - Commit `.env.example` (contains placeholder settings only) and `.gitignore`, never `.env`.
 
 ---
 
 ## Future Enhancements
 
-Planned roadmap features for upcoming development phases (not yet implemented in the current release):
+Planned roadmap features not yet implemented in the current release:
 
-- Pagination (`Paginator`) for `/jobs/` and large dashboard tables.
-- Admin job posting approval and rejection workflow (`Pending` / `Approved` / `Rejected` moderation states).
-- Advanced job search filters for job category, salary range, and structured experience levels.
-- Extended Job Seeker profile completion with structured education records, work experience entries, and a completion progress meter.
-- Interview scheduling between Employers and shortlisted applicants.
-- Automated email notification triggers for new job applications and application status updates (environment-backed `MAILERS` / SMTP settings scaffolding is already configured).
+- Pagination (`Paginator`) for `/jobs/` and large dashboard lists.
+- Admin moderation workflow (`Pending` / `Approved` / `Rejected`) for submitted job postings.
+- Advanced search filters for job category, salary range, and structured experience levels.
+- Extended Job Seeker profile completion with structured education records, work experience entries, and a completion progress indicator.
+- Interview scheduling between Employers and shortlisted candidates.
+- Automated email notifications on job applications and status updates (SMTP / `MAILERS` environment configuration is already in place).
 - Interactive dashboard charts and hiring analytics.
 
 ---
