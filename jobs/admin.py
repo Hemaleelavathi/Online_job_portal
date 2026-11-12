@@ -2,7 +2,7 @@ from django.contrib import admin, messages
 from django.urls import reverse
 from django.utils.html import format_html
 
-from .models import ApplicationStatusHistory, Job, JobApplication
+from .models import ApplicationStatusHistory, Job, JobApplication, SavedJob
 
 
 def _bulk_update_status(modeladmin, request, queryset, status_code, status_label):
@@ -152,3 +152,11 @@ class JobApplicationAdmin(admin.ModelAdmin):
     @admin.action(description='Mark selected applications as Selected')
     def mark_as_selected(self, request, queryset):
         _bulk_update_status(self, request, queryset, JobApplication.STATUS_SELECTED, 'Selected')
+
+
+@admin.register(SavedJob)
+class SavedJobAdmin(admin.ModelAdmin):
+    list_display = ('user', 'job', 'saved_at')
+    list_filter = ('saved_at',)
+    search_fields = ('user__email', 'user__profile__full_name', 'job__title', 'job__company')
+    list_select_related = ('user', 'user__profile', 'job')

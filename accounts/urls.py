@@ -10,4 +10,5 @@ urlpatterns = [
     path('dashboard/job-seeker/', views.job_seeker_dashboard, name='job_seeker_dashboard'),
     path('dashboard/employer/', views.employer_dashboard, name='employer_dashboard'),
     path('dashboard/admin/', views.admin_dashboard, name='admin_dashboard'),
+    path('profile/resume/', views.download_profile_resume, name='download_profile_resume'),
 ]

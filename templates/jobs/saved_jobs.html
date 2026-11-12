@@ -1,0 +1,132 @@
+{% extends 'base.html' %}
+
+{% block title %}CareerConnect | Saved Jobs{% endblock %}
+
+{% block content %}
+<section class="py-5">
+    <div class="container">
+        <div class="card border-0 shadow-sm mb-4 cc-auth-card cc-card-accent-top">
+            <div class="card-body p-4 p-md-5 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                <div>
+                    <span class="badge rounded-pill cc-job-type-badge mb-2">
+                        <i class="bi bi-bookmark-heart me-1"></i> Bookmarked Opportunities
+                    </span>
+                    <h1 class="h2 fw-bold mb-1">My Saved Jobs</h1>
+                    <p class="text-muted mb-0">
+                        Review roles you bookmarked for later, check open status, and apply whenever you're ready.
+                    </p>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="{% url 'job_list' %}" class="btn btn-primary cc-btn-primary px-3 fw-semibold">
+                        <i class="bi bi-search me-1"></i> Browse Available Jobs
+                    </a>
+                    <a href="{% url 'job_seeker_dashboard' %}" class="btn btn-outline-secondary px-3">
+                        Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        {% if saved_jobs %}
+            <div class="row g-4">
+                {% for bookmark in saved_jobs %}
+                    <div class="col-12 col-lg-6">
+                        <article class="card border-0 shadow-sm cc-job-card h-100">
+                            <div class="card-body p-4 d-flex flex-column">
+                                <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="cc-company-avatar text-white fw-bold d-flex align-items-center justify-content-center flex-shrink-0" style="background-color: {{ bookmark.job.accent_color }};">
+                                            {{ bookmark.job.initials }}
+                                        </div>
+                                        <div>
+                                            <h2 class="h5 fw-bold mb-0">
+                                                {% if bookmark.job.is_active or bookmark.job.id in applied_job_ids %}
+                                                    <a href="{% url 'job_detail' bookmark.job.id %}" class="text-decoration-none text-dark">
+                                                        {{ bookmark.job.title }}
+                                                    </a>
+                                                {% else %}
+                                                    <span>{{ bookmark.job.title }}</span>
+                                                {% endif %}
+                                            </h2>
+                                            <div class="text-muted small">{{ bookmark.job.company }}</div>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex flex-wrap gap-1 justify-content-end">
+                                        <span class="badge rounded-pill cc-job-type-badge">{{ bookmark.job.job_type }}</span>
+                                        {% if not bookmark.job.is_active %}
+                                            <span class="badge rounded-pill bg-secondary-subtle text-secondary">Inactive</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <div class="d-flex flex-wrap gap-3 text-muted small mb-3">
+                                    <span><i class="bi bi-geo-alt me-1 text-primary"></i>{{ bookmark.job.location }}</span>
+                                    {% if bookmark.job.salary %}
+                                        <span><i class="bi bi-cash-stack me-1 text-success"></i>{{ bookmark.job.salary }}</span>
+                                    {% endif %}
+                                    {% if bookmark.job.experience %}
+                                        <span><i class="bi bi-award me-1 text-warning"></i>{{ bookmark.job.experience }}</span>
+                                    {% endif %}
+                                    <span><i class="bi bi-bookmark-check me-1"></i>Saved {{ bookmark.saved_at|date:"M d, Y" }}</span>
+                                </div>
+
+                                <p class="text-muted small mb-3 flex-grow-1">
+                                    {{ bookmark.job.description|truncatewords:28 }}
+                                </p>
+
+                                {% if bookmark.job.skill_list %}
+                                    <div class="d-flex flex-wrap gap-2 mb-3">
+                                        {% for skill in bookmark.job.skill_list %}
+                                            <span class="badge cc-skill-badge fw-medium">{{ skill }}</span>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+
+                                <div class="mt-auto d-flex flex-wrap justify-content-between align-items-center gap-2 pt-3 border-top">
+                                    <div class="d-flex flex-wrap gap-2">
+                                        {% if bookmark.job.id in applied_job_ids %}
+                                            <a href="{% url 'applied_jobs' %}" class="btn btn-sm btn-success fw-semibold">
+                                                <i class="bi bi-check-circle me-1"></i> Applied
+                                            </a>
+                                        {% elif bookmark.job.is_active %}
+                                            <a href="{% url 'apply_to_job' bookmark.job.id %}?next={% url 'applied_jobs' %}" class="btn btn-sm btn-primary cc-btn-primary fw-semibold">
+                                                Apply Now
+                                            </a>
+                                        {% endif %}
+                                        {% if bookmark.job.is_active or bookmark.job.id in applied_job_ids %}
+                                            <a href="{% url 'job_detail' bookmark.job.id %}" class="btn btn-sm btn-outline-primary cc-btn-outline">
+                                                View Details
+                                            </a>
+                                        {% endif %}
+                                    </div>
+
+                                    <form method="post" action="{% url 'unsave_job' bookmark.job.id %}" class="d-inline">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="next" value="{% url 'saved_jobs' %}">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                                            <i class="bi bi-trash me-1"></i> Remove
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </article>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="card border-0 shadow-sm text-center p-5 cc-auth-card">
+                <div class="card-body">
+                    <i class="bi bi-bookmark fs-1 text-muted d-block mb-3"></i>
+                    <h2 class="h5 fw-bold mb-2">No Saved Jobs Yet</h2>
+                    <p class="text-muted mb-4">
+                        Bookmark interesting positions while browsing so you can review and apply to them later.
+                    </p>
+                    <a href="{% url 'job_list' %}" class="btn btn-primary cc-btn-primary px-4">
+                        Explore Available Jobs
+                    </a>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

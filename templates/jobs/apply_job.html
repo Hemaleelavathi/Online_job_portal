@@ -34,7 +34,7 @@
                     </div>
                 </div>
 
-                <div class="card border-0 shadow-sm cc-auth-card">
+                <div class="card border-0 shadow-sm cc-auth-card cc-card-accent-top">
                     <div class="card-body p-4 p-md-5">
                         <h2 class="h5 fw-bold mb-1">Application Details</h2>
                         <p class="text-muted small mb-4">
@@ -63,7 +63,7 @@
                                             <i class="bi bi-file-earmark-pdf-fill text-danger me-1"></i>
                                             Profile resume on file: <strong>{{ profile.resume_filename }}</strong>
                                         </span>
-                                        <a href="{{ profile.resume.url }}" target="_blank" rel="noopener" class="text-decoration-none fw-semibold">View</a>
+                                        <a href="{% url 'download_profile_resume' %}?inline=1" target="_blank" rel="noopener" class="text-decoration-none fw-semibold">View</a>
                                     </div>
                                 {% endif %}
                                 <input
@@ -71,9 +71,11 @@
                                     name="{{ form.resume.name }}"
                                     id="{{ form.resume.id_for_label }}"
                                     accept=".pdf,application/pdf"
+                                    data-file-hint="apply-resume-hint"
                                     class="form-control {% if form.resume.errors %}is-invalid{% endif %}"
                                 >
                                 <div class="form-text">{{ form.resume.help_text }}</div>
+                                <div id="apply-resume-hint" class="form-text"></div>
                                 {% for error in form.resume.errors %}
                                     <div class="invalid-feedback d-block">{{ error }}</div>
                                 {% endfor %}

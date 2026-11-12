@@ -1,6 +1,13 @@
+from django.contrib.auth import get_user_model
 from django.contrib.staticfiles import finders
 from django.test import TestCase
 from django.urls import reverse
+
+from accounts.models import UserProfile
+
+from .models import Job, SavedJob
+
+User = get_user_model()
 
 
 class HomePageTests(TestCase):
@@ -30,6 +37,47 @@ class HomePageTests(TestCase):
 
     def test_static_css_exists(self):
         self.assertIsNotNone(finders.find('css/style.css'))
+        self.assertIsNotNone(finders.find('js/main.js'))
+
+    def test_home_page_displays_live_database_metrics_and_company_overview_on_detail(self):
+        response = self.client.get(reverse('home'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '/static/js/main.js')
+        self.assertEqual(response.context['active_jobs_count'], Job.objects.filter(is_active=True).count())
+        self.assertEqual(
+            response.context['total_companies_count'],
+            Job.objects.filter(is_active=True).values('company').distinct().count(),
+        )
+        self.assertEqual(response.context['total_applications_count'], 0)
+
+        employer = User.objects.create_user(
+            username='company_card@example.com',
+            email='company_card@example.com',
+            password='Password#2026',
+        )
+        UserProfile.objects.create(
+            user=employer,
+            full_name='Aarav Mehta',
+            role=UserProfile.ROLE_EMPLOYER,
+            company_name='OrbitCloud Systems',
+            company_description='Building reliable developer tools in India.',
+        )
+        job = Job.objects.create(
+            employer=employer,
+            title='Platform Reliability Engineer',
+            company='OrbitCloud Systems',
+            location='Remote',
+            job_type=Job.JOB_TYPE_REMOTE,
+            salary='18 LPA',
+            experience='2-4 years',
+            skills_required='Python, Linux',
+            description='Operate high-availability web clusters.',
+            is_active=True,
+        )
+        detail = self.client.get(reverse('job_detail', args=[job.id]))
+        self.assertEqual(detail.status_code, 200)
+        self.assertContains(detail, 'About OrbitCloud Systems')
+        self.assertContains(detail, 'Building reliable developer tools in India.')
 
     def test_home_page_search_filters_featured_jobs(self):
         response = self.client.get(reverse('home'), {'q': 'Django'})
@@ -47,13 +95,6 @@ class HomePageTests(TestCase):
         response = self.client.get(reverse('home'), {'q': 'NonexistentSkill123'})
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'No matching jobs found')
-
-
-from django.contrib.auth import get_user_model
-from accounts.models import UserProfile
-from .models import Job
-
-User = get_user_model()
 
 
 class JobPostingModuleTests(TestCase):
@@ -530,7 +571,9 @@ class JobSearchAndApplicationTests(TestCase):
                 self.assertContains(emp_resp, 'Asha Menon')
                 self.assertContains(emp_resp, 'Built scalable Django services for 4 years.')
                 self.assertContains(emp_resp, 'View Resume')
-                self.assertContains(emp_resp, application.effective_resume.url)
+                download_url = reverse('download_applicant_resume', args=[application.id])
+                self.assertContains(emp_resp, f'{download_url}?inline=1')
+                self.assertContains(emp_resp, download_url)
 
 
 
@@ -1657,3 +1700,412 @@ class AdminPortalDashboardTests(TestCase):
                 seeker_dash = self.client.get(reverse('job_seeker_dashboard'))
                 self.assertContains(seeker_dash, 'Selected')
                 self.assertContains(seeker_dash, 'Shortlisted')
+
+
+class SavedJobAndSecurityTests(TestCase):
+    """Verify SavedJob persistence, access control, private resumes, and security hardening."""
+
+    def setUp(self):
+        self.seeker_1 = User.objects.create_user(
+            username='saved_seeker_1@example.com',
+            email='saved_seeker_1@example.com',
+            password='StrongPassword123!',
+            first_name='Kavya',
+            last_name='Nair',
+        )
+        UserProfile.objects.create(
+            user=self.seeker_1,
+            role=UserProfile.ROLE_JOB_SEEKER,
+            full_name='Kavya Nair',
+            phone='9876543210',
+            skills='Python, Django',
+        )
+
+        self.seeker_2 = User.objects.create_user(
+            username='saved_seeker_2@example.com',
+            email='saved_seeker_2@example.com',
+            password='StrongPassword123!',
+            first_name='Arjun',
+            last_name='Verma',
+        )
+        UserProfile.objects.create(
+            user=self.seeker_2,
+            role=UserProfile.ROLE_JOB_SEEKER,
+            full_name='Arjun Verma',
+        )
+
+        self.employer = User.objects.create_user(
+            username='private_employer@example.com',
+            email='private_employer@example.com',
+            password='StrongPassword123!',
+            first_name='Ritu',
+            last_name='Sharma',
+        )
+        UserProfile.objects.create(
+            user=self.employer,
+            role=UserProfile.ROLE_EMPLOYER,
+            full_name='',
+            company_name='ShieldTech Systems',
+        )
+
+        self.admin_user = User.objects.create_superuser(
+            username='sec_admin@example.com',
+            email='sec_admin@example.com',
+            password='StrongPassword123!',
+        )
+
+        self.job_active = Job.objects.create(
+            employer=self.employer,
+            title='Security Backend Engineer',
+            company='ShieldTech Systems',
+            description='Build secure APIs and role-based systems.',
+            location='Bengaluru',
+            salary='18 LPA',
+            job_type='Full-Time',
+            skills_required='Python, Django',
+            experience='3-5 Years',
+            is_active=True,
+        )
+        self.job_inactive = Job.objects.create(
+            employer=self.employer,
+            title='Archived Legacy Role',
+            company='ShieldTech Systems',
+            description='No longer accepting applications.',
+            location='Chennai',
+            salary='10 LPA',
+            job_type='Contract',
+            skills_required='SQL',
+            experience='2 Years',
+            is_active=False,
+        )
+
+    @staticmethod
+    def _pdf_file(name='resume.pdf', size_extra=0):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        content = b'%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n' + (b'A' * size_extra) + b'%%EOF'
+        return SimpleUploadedFile(name, content, content_type='application/pdf')
+
+    def test_saved_job_unique_constraint_prevents_duplicates(self):
+        from django.db import IntegrityError
+
+        SavedJob.objects.create(user=self.seeker_1, job=self.job_active)
+        with self.assertRaises(IntegrityError):
+            SavedJob.objects.create(user=self.seeker_1, job=self.job_active)
+
+    def test_saved_jobs_access_control_and_methods(self):
+        save_url = reverse('save_job', args=[self.job_active.id])
+        unsave_url = reverse('unsave_job', args=[self.job_active.id])
+        saved_url = reverse('saved_jobs')
+
+        # Anonymous users redirect to login
+        self.assertEqual(self.client.get(saved_url).status_code, 302)
+        self.assertEqual(self.client.post(save_url).status_code, 302)
+        self.assertEqual(self.client.post(unsave_url).status_code, 302)
+
+        # Employers and Admins cannot access Saved Jobs or bookmark jobs
+        for non_seeker in (self.employer, self.admin_user):
+            self.client.force_login(non_seeker)
+            self.assertEqual(self.client.get(saved_url).status_code, 403)
+            self.assertEqual(self.client.post(save_url).status_code, 403)
+            self.assertEqual(self.client.post(unsave_url).status_code, 403)
+
+        # GET on save/unsave rejected; saving inactive job returns 404
+        self.client.force_login(self.seeker_1)
+        self.assertEqual(self.client.get(save_url).status_code, 405)
+        self.assertEqual(self.client.get(unsave_url).status_code, 405)
+        self.assertEqual(
+            self.client.post(reverse('save_job', args=[self.job_inactive.id])).status_code,
+            404,
+        )
+
+    def test_saved_jobs_workflow_duplicate_handling_isolation_and_inactive_links(self):
+        save_url = reverse('save_job', args=[self.job_active.id])
+        unsave_url = reverse('unsave_job', args=[self.job_active.id])
+        saved_url = reverse('saved_jobs')
+        detail_url = reverse('job_detail', args=[self.job_active.id])
+
+        self.client.force_login(self.seeker_1)
+
+        # Save active job
+        resp1 = self.client.post(save_url, {'next': detail_url}, follow=True)
+        self.assertRedirects(resp1, detail_url)
+        self.assertContains(resp1, 'saved to your Saved Jobs.')
+        self.assertEqual(SavedJob.objects.filter(user=self.seeker_1, job=self.job_active).count(), 1)
+
+        # Duplicate save does not create a second record
+        resp2 = self.client.post(save_url, {'next': detail_url}, follow=True)
+        self.assertRedirects(resp2, detail_url)
+        self.assertContains(resp2, 'is already in your Saved Jobs.')
+        self.assertEqual(SavedJob.objects.filter(user=self.seeker_1, job=self.job_active).count(), 1)
+
+        # Saved Jobs page lists the job and count shows on dashboard
+        saved_page = self.client.get(saved_url)
+        self.assertEqual(saved_page.status_code, 200)
+        self.assertContains(saved_page, 'Security Backend Engineer')
+        self.assertContains(saved_page, 'Apply Now')
+
+        dash_resp = self.client.get(reverse('job_seeker_dashboard'))
+        self.assertEqual(dash_resp.context['saved_jobs_count'], 1)
+        self.assertIn(self.job_active.id, dash_resp.context['saved_job_ids'])
+
+        # Cross-user isolation: seeker_2 cannot remove seeker_1's saved job and sees empty saved list
+        self.client.force_login(self.seeker_2)
+        other_unsave = self.client.post(unsave_url, {'next': saved_url}, follow=True)
+        self.assertRedirects(other_unsave, saved_url)
+        self.assertEqual(SavedJob.objects.filter(user=self.seeker_1, job=self.job_active).count(), 1)
+        self.assertNotContains(other_unsave, 'Security Backend Engineer')
+
+        # If a saved job becomes inactive and user has not applied, Saved Jobs avoids a broken 404 detail link
+        self.client.force_login(self.seeker_1)
+        self.job_active.is_active = False
+        self.job_active.save(update_fields=['is_active'])
+        closed_saved_page = self.client.get(saved_url)
+        self.assertEqual(closed_saved_page.status_code, 200)
+        self.assertNotContains(closed_saved_page, f'href="{detail_url}"')
+
+        # Unsave removes the bookmark cleanly
+        unsave_resp = self.client.post(unsave_url, {'next': saved_url}, follow=True)
+        self.assertRedirects(unsave_resp, saved_url)
+        self.assertContains(unsave_resp, 'from your Saved Jobs.')
+        self.assertEqual(SavedJob.objects.filter(user=self.seeker_1).count(), 0)
+
+    def test_private_resumes_blocked_at_media_url_and_protected_by_auth_views(self):
+        import tempfile
+        from django.test import override_settings
+
+        with tempfile.TemporaryDirectory() as tmp_media:
+            with override_settings(MEDIA_ROOT=tmp_media, DEBUG=True):
+                profile_1 = self.seeker_1.profile
+                profile_1.resume = self._pdf_file('kavya_cv.pdf')
+                profile_1.save()
+
+                from .models import JobApplication
+
+                app = JobApplication.objects.create(
+                    job=self.job_active,
+                    applicant=self.seeker_1,
+                    resume=self._pdf_file('kavya_app.pdf'),
+                    cover_note='Excited to apply.',
+                )
+
+                # Direct /media/... access must return 404 even when DEBUG=True
+                self.assertEqual(self.client.get(app.effective_resume.url).status_code, 404)
+                self.assertEqual(self.client.get(profile_1.resume.url).status_code, 404)
+
+                # Profile resume download requires login and only serves request.user's own resume
+                profile_resume_url = reverse('download_profile_resume')
+                self.assertEqual(self.client.get(profile_resume_url).status_code, 302)
+
+                self.client.force_login(self.seeker_2)
+                self.assertEqual(self.client.get(profile_resume_url).status_code, 404)
+
+                self.client.force_login(self.seeker_1)
+                dl_resp = self.client.get(profile_resume_url)
+                self.assertEqual(dl_resp.status_code, 200)
+                self.assertEqual(dl_resp['Content-Type'], 'application/pdf')
+                self.assertEqual(dl_resp['X-Content-Type-Options'], 'nosniff')
+                self.assertIn('attachment;', dl_resp['Content-Disposition'])
+                dl_resp.close()
+
+                inline_resp = self.client.get(f'{profile_resume_url}?inline=1')
+                self.assertEqual(inline_resp.status_code, 200)
+                self.assertEqual(inline_resp['Content-Type'], 'application/pdf')
+                self.assertEqual(inline_resp['X-Content-Type-Options'], 'nosniff')
+                self.assertIn('inline;', inline_resp['Content-Disposition'])
+                inline_resp.close()
+
+                # Applicant resume endpoint enforces ownership and sets nosniff
+                app_resume_url = reverse('download_applicant_resume', args=[app.id])
+                self.client.force_login(self.seeker_2)
+                self.assertEqual(self.client.get(app_resume_url).status_code, 403)
+
+                self.client.force_login(self.employer)
+                emp_dl = self.client.get(app_resume_url)
+                self.assertEqual(emp_dl.status_code, 200)
+                self.assertEqual(emp_dl['Content-Type'], 'application/pdf')
+                self.assertEqual(emp_dl['X-Content-Type-Options'], 'nosniff')
+                emp_dl.close()
+
+    def test_job_detail_hides_employer_private_email(self):
+        resp = self.client.get(reverse('job_detail', args=[self.job_active.id]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotContains(resp, 'private_employer@example.com')
+        self.assertContains(resp, 'ShieldTech Systems')
+
+    def test_oversize_pdf_resume_rejected_and_env_helpers_work(self):
+        from django.core.exceptions import ValidationError
+        from accounts.validators import MAX_RESUME_BYTES, validate_pdf_resume
+        from pathlib import Path
+        from django.conf import settings as django_settings
+        from CareerConnect.settings import _env_bool, _env_list
+
+        settings_source = (Path(django_settings.BASE_DIR) / 'CareerConnect' / 'settings.py').read_text(encoding='utf-8')
+        self.assertNotIn('django-insecure-', settings_source)
+        self.assertNotIn('careerconnect-local-dev-only', settings_source)
+
+        oversized = self._pdf_file('too_big.pdf', size_extra=MAX_RESUME_BYTES)
+        with self.assertRaises(ValidationError) as exc:
+            validate_pdf_resume(oversized)
+        self.assertIn('5 MB', str(exc.exception))
+
+        from unittest.mock import patch
+
+        self.assertTrue(_env_bool('NONEXISTENT_FLAG_TEST', default=True))
+        self.assertEqual(_env_list('NONEXISTENT_LIST_TEST', ('a', 'b')), ['a', 'b'])
+        with patch.dict('os.environ', {'TEST_CSV_LIST': 'alpha.example.com, beta.example.com'}):
+            self.assertEqual(_env_list('TEST_CSV_LIST'), ['alpha.example.com', 'beta.example.com'])
+
+
+class Phase4PortalAuditTests(TestCase):
+    """Verify admin registration for SavedJob, link integrity, responsive markup, and email config."""
+
+    def setUp(self):
+        self.seeker = User.objects.create_user(
+            username='audit_seeker@example.com',
+            email='audit_seeker@example.com',
+            password='StrongPassword123!',
+            first_name='Meera',
+            last_name='Rao',
+        )
+        UserProfile.objects.create(
+            user=self.seeker,
+            role=UserProfile.ROLE_JOB_SEEKER,
+            full_name='Meera Rao',
+        )
+        self.employer = User.objects.create_user(
+            username='audit_employer@example.com',
+            email='audit_employer@example.com',
+            password='StrongPassword123!',
+            first_name='Vikram',
+            last_name='Seth',
+        )
+        UserProfile.objects.create(
+            user=self.employer,
+            role=UserProfile.ROLE_EMPLOYER,
+            full_name='Vikram Seth',
+            company_name='NovaGrid Labs',
+        )
+        self.staff_admin = User.objects.create_superuser(
+            username='audit_admin@example.com',
+            email='audit_admin@example.com',
+            password='StrongPassword123!',
+        )
+        self.job = Job.objects.create(
+            employer=self.employer,
+            title='Cloud Operations Specialist',
+            company='NovaGrid Labs',
+            description='Manage production reliability and CI pipelines.',
+            location='Pune',
+            salary='15 LPA',
+            job_type='Full-Time',
+            skills_required='Linux, Python, SQL',
+            experience='2-4 Years',
+            is_active=True,
+        )
+
+    def test_saved_job_registered_in_django_admin_and_protected(self):
+        from django.contrib import admin as django_admin
+
+        self.assertIn(SavedJob, django_admin.site._registry)
+        SavedJob.objects.create(user=self.seeker, job=self.job)
+
+        admin_changelist = reverse('admin:jobs_savedjob_changelist')
+        self.client.force_login(self.seeker)
+        self.assertEqual(self.client.get(admin_changelist).status_code, 302)
+
+        self.client.force_login(self.staff_admin)
+        resp = self.client.get(admin_changelist)
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'Cloud Operations Specialist')
+
+    def test_saved_jobs_and_applied_jobs_have_no_broken_internal_links(self):
+        from .models import JobApplication
+
+        SavedJob.objects.create(user=self.seeker, job=self.job)
+        JobApplication.objects.create(job=self.job, applicant=self.seeker)
+
+        self.client.force_login(self.seeker)
+        for route in ('home', 'job_list', 'job_seeker_dashboard', 'saved_jobs', 'applied_jobs'):
+            page = self.client.get(reverse(route))
+            self.assertEqual(page.status_code, 200)
+            EndToEndPortalVerificationTests._assert_no_broken_internal_links(self, page)
+
+    def test_responsive_viewport_navbar_and_table_markup_across_pages(self):
+        from .models import JobApplication
+
+        JobApplication.objects.create(job=self.job, applicant=self.seeker)
+
+        static_css = finders.find('css/style.css')
+        self.assertIsNotNone(static_css)
+        with open(static_css, encoding='utf-8') as f:
+            css_content = f.read()
+        self.assertIn('@media (max-width: 575.98px)', css_content)
+        self.assertIn('@media (min-width: 768px)', css_content)
+
+        for route in ('home', 'job_list', 'login', 'register'):
+            resp = self.client.get(reverse(route))
+            self.assertEqual(resp.status_code, 200)
+            self.assertContains(resp, '<meta name="viewport" content="width=device-width, initial-scale=1.0">')
+            self.assertContains(resp, 'navbar-toggler')
+            self.assertContains(resp, 'data-bs-target="#mainNavbar"')
+
+        self.client.force_login(self.employer)
+        emp_resp = self.client.get(reverse('employer_dashboard'))
+        self.assertEqual(emp_resp.status_code, 200)
+        self.assertContains(emp_resp, 'col-lg-')
+        self.assertContains(emp_resp, 'flex-sm-row')
+
+        self.client.force_login(self.staff_admin)
+        admin_resp = self.client.get(reverse('admin_dashboard'))
+        self.assertEqual(admin_resp.status_code, 200)
+        self.assertContains(admin_resp, 'col-lg-')
+        self.assertContains(admin_resp, 'flex-sm-row')
+
+    def test_email_mailer_configuration_loads_cleanly(self):
+        from django.conf import settings
+        from django.core import mail
+
+        self.assertIn('default', settings.MAILERS)
+        self.assertIn('BACKEND', settings.MAILERS['default'])
+        sent = mail.send_mail(
+            'CareerConnect Audit Check',
+            'Test email transport.',
+            settings.DEFAULT_FROM_EMAIL,
+            ['audit_seeker@example.com'],
+        )
+        self.assertEqual(sent, 1)
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_frontend_static_assets_hero_gradient_and_navbar_controls(self):
+        static_css = finders.find('css/style.css')
+        static_js = finders.find('js/main.js')
+        self.assertIsNotNone(static_css)
+        self.assertIsNotNone(static_js)
+
+        with open(static_css, encoding='utf-8') as f:
+            css_text = f.read()
+        for expected in (
+            '.cc-hero',
+            'linear-gradient',
+            '#1e1b4b',
+            '.cc-hero-subtitle',
+            '.cc-navbar .navbar-toggler',
+            '@media (min-width: 768px)',
+            '@media (max-width: 767.98px)',
+            '@media (max-width: 575.98px)',
+        ):
+            self.assertIn(expected, css_text)
+
+        with open(static_js, encoding='utf-8') as f:
+            js_text = f.read()
+        self.assertIn('.navbar-toggler[data-bs-target]', js_text)
+
+        home_resp = self.client.get(reverse('home'))
+        self.assertEqual(home_resp.status_code, 200)
+        self.assertContains(home_resp, '/static/css/style.css?v=20261112b')
+        self.assertContains(home_resp, '/static/js/main.js?v=20261112b')
+        self.assertContains(home_resp, 'navbar-expand-md')
+        self.assertContains(home_resp, 'cc-hero')
+        self.assertContains(home_resp, 'cc-hero-title')
+        self.assertContains(home_resp, 'cc-hero-subtitle')

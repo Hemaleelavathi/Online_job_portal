@@ -2,16 +2,17 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError
 from django.db.models import Q
-from django.http import FileResponse, Http404
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from accounts.decorators import render_access_denied, role_required
+from accounts.files import serve_pdf_file
 from accounts.models import UserProfile
 
 from .forms import ApplicationStatusForm, JobApplicationForm, JobForm
-from .models import Job, JobApplication
+from .models import Job, JobApplication, SavedJob
 
 
 def _get_owned_job_or_403(request, job_id):
@@ -74,6 +75,13 @@ def _get_applied_job_ids(user):
     return set(JobApplication.objects.filter(applicant=user).values_list('job_id', flat=True))
 
 
+def _get_saved_job_ids(user):
+    """Return IDs of jobs saved by an authenticated user, or an empty set."""
+    if not user.is_authenticated:
+        return set()
+    return set(SavedJob.objects.filter(user=user).values_list('job_id', flat=True))
+
+
 def _safe_redirect_url(request, candidate, fallback_name):
     """Return candidate URL if safe on this host, otherwise fallback route name."""
     if candidate and url_has_allowed_host_and_scheme(
@@ -86,8 +94,9 @@ def _safe_redirect_url(request, candidate, fallback_name):
 
 
 def home(request):
-    """Render the CareerConnect home page with optional search filtering on active jobs."""
+    """Render the CareerConnect home page with optional search filtering and live metrics."""
     jobs, query, location, _ = _filter_active_jobs(request)
+    active_jobs_qs = Job.objects.filter(is_active=True)
 
     return render(
         request,
@@ -98,6 +107,10 @@ def home(request):
             'search_location': location,
             'is_filtered': bool(query or location),
             'applied_job_ids': _get_applied_job_ids(request.user),
+            'saved_job_ids': _get_saved_job_ids(request.user),
+            'active_jobs_count': active_jobs_qs.count(),
+            'total_companies_count': active_jobs_qs.values('company').distinct().count(),
+            'total_applications_count': JobApplication.objects.count(),
         },
     )
 
@@ -117,6 +130,7 @@ def job_list(request):
             'selected_job_type': job_type,
             'is_filtered': bool(query or location or job_type),
             'applied_job_ids': _get_applied_job_ids(request.user),
+            'saved_job_ids': _get_saved_job_ids(request.user),
         },
     )
 
@@ -141,6 +155,10 @@ def job_detail(request, job_id):
         request.user.is_authenticated
         and getattr(getattr(request.user, 'profile', None), 'role', None) == UserProfile.ROLE_JOB_SEEKER
     )
+    is_saved = (
+        is_job_seeker
+        and SavedJob.objects.filter(user=request.user, job=job).exists()
+    )
 
     return render(
         request,
@@ -149,6 +167,7 @@ def job_detail(request, job_id):
             'job': job,
             'is_owner': is_owner,
             'has_applied': has_applied,
+            'is_saved': is_saved,
             'existing_application': existing_application,
             'application_form': JobApplicationForm() if (is_job_seeker and not has_applied) else None,
         },
@@ -278,16 +297,73 @@ def download_applicant_resume(request, application_id):
     if not (is_hiring_employer or is_applicant or request.user.is_staff):
         return render_access_denied(request, 'the hiring employer, applicant, or admin')
 
-    resume_field = application.effective_resume
-    if not resume_field or not resume_field.storage.exists(resume_field.name):
-        raise Http404('Resume file not found.')
-
-    return FileResponse(
-        resume_field.open('rb'),
-        as_attachment=(request.GET.get('inline') != '1'),
-        filename=application.resume_filename or 'resume.pdf',
-        content_type='application/pdf',
+    return serve_pdf_file(
+        application.effective_resume,
+        filename=application.resume_filename,
+        inline=(request.GET.get('inline') == '1'),
     )
+
+
+@role_required(UserProfile.ROLE_JOB_SEEKER)
+def saved_jobs(request):
+    """Display all jobs bookmarked by the logged-in Job Seeker."""
+    bookmarks = (
+        SavedJob.objects.filter(user=request.user)
+        .select_related('job', 'job__employer', 'job__employer__profile')
+    )
+    return render(
+        request,
+        'jobs/saved_jobs.html',
+        {
+            'saved_jobs': bookmarks,
+            'applied_job_ids': _get_applied_job_ids(request.user),
+            'profile': request.user.profile,
+        },
+    )
+
+
+@role_required(UserProfile.ROLE_JOB_SEEKER)
+@require_POST
+def save_job(request, job_id):
+    """Bookmark an active job for the logged-in Job Seeker while preventing duplicates."""
+    job = get_object_or_404(Job, pk=job_id, is_active=True)
+    try:
+        _, created = SavedJob.objects.get_or_create(user=request.user, job=job)
+    except IntegrityError:
+        created = False
+
+    if created:
+        messages.success(request, f'"{job.title}" saved to your Saved Jobs.')
+    else:
+        messages.info(request, f'"{job.title}" is already in your Saved Jobs.')
+
+    redirect_target = _safe_redirect_url(
+        request,
+        request.POST.get('next', ''),
+        'saved_jobs',
+    )
+    return redirect(redirect_target)
+
+
+@role_required(UserProfile.ROLE_JOB_SEEKER)
+@require_POST
+def unsave_job(request, job_id):
+    """Remove a bookmarked job from the logged-in Job Seeker's Saved Jobs list."""
+    bookmark = SavedJob.objects.select_related('job').filter(
+        user=request.user,
+        job_id=job_id,
+    ).first()
+    if bookmark:
+        title = bookmark.job.title
+        bookmark.delete()
+        messages.info(request, f'Removed "{title}" from your Saved Jobs.')
+
+    redirect_target = _safe_redirect_url(
+        request,
+        request.POST.get('next', ''),
+        'saved_jobs',
+    )
+    return redirect(redirect_target)
 
 
 @role_required(UserProfile.ROLE_EMPLOYER)

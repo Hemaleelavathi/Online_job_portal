@@ -233,3 +233,31 @@ class ApplicationStatusHistory(models.Model):
 
     def __str__(self):
         return f'{self.application_id}: {self.get_status_display()}'
+
+
+class SavedJob(models.Model):
+    """Bookmarks a Job listing saved by a user to revisit or apply later."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='saved_jobs',
+    )
+    job = models.ForeignKey(
+        Job,
+        on_delete=models.CASCADE,
+        related_name='saved_by',
+    )
+    saved_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-saved_at', '-id']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'job'],
+                name='unique_saved_job',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.user} saved {self.job}'

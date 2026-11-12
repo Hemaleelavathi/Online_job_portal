@@ -6,7 +6,7 @@
 <section class="py-4 py-lg-5">
     <div class="container">
         <!-- Welcome & Actions Banner -->
-        <div class="card border-0 shadow-sm mb-4 cc-auth-card">
+        <div class="card border-0 shadow-sm mb-4 cc-auth-card cc-card-accent-top">
             <div class="card-body p-4 p-md-5 d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-4">
                 <div>
                     <span class="badge rounded-pill cc-job-type-badge mb-2">
@@ -22,11 +22,11 @@
                     </p>
                 </div>
                 <div class="d-flex flex-wrap align-items-center gap-3">
-                    <div class="bg-light rounded-3 px-3 py-2 text-center border">
+                    <div class="cc-stat-card">
                         <div class="fw-bold fs-5 text-primary">{{ posted_jobs|length }}</div>
                         <div class="small text-muted">Posted Jobs</div>
                     </div>
-                    <div class="bg-light rounded-3 px-3 py-2 text-center border">
+                    <div class="cc-stat-card">
                         <div class="fw-bold fs-5 text-success">{{ total_applicants }}</div>
                         <div class="small text-muted">Applicants</div>
                     </div>
@@ -46,7 +46,7 @@
         <div class="row g-4 align-items-start">
             <!-- Left Column: Company Profile Display & Update Form -->
             <div class="col-12 col-lg-5">
-                <div class="card border-0 shadow-sm mb-4 cc-auth-card">
+                <div class="card shadow-sm mb-4 cc-company-card">
                     <div class="card-body p-4">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h2 class="h5 fw-bold mb-0">
@@ -57,10 +57,10 @@
 
                         <dl class="row mb-0 small gy-2">
                             <dt class="col-sm-4 text-muted">Employer Name</dt>
-                            <dd class="col-sm-8 fw-semibold mb-1">{{ profile.full_name }}</dd>
+                            <dd class="col-sm-8 fw-semibold mb-1 cc-wrap-anywhere">{{ profile.full_name }}</dd>
 
                             <dt class="col-sm-4 text-muted">Email</dt>
-                            <dd class="col-sm-8 mb-1">{{ request.user.email }}</dd>
+                            <dd class="col-sm-8 mb-1 cc-wrap-anywhere">{{ request.user.email }}</dd>
 
                             <dt class="col-sm-4 text-muted">Company Name</dt>
                             <dd class="col-sm-8 fw-semibold mb-1">{{ profile.company_name|default:"Not provided" }}</dd>
@@ -364,7 +364,7 @@
                                                         <a href="{% url 'download_applicant_resume' application.id %}" class="btn btn-sm btn-primary cc-btn-primary">
                                                             <i class="bi bi-download me-1"></i> Download Resume
                                                         </a>
-                                                        <a href="{{ application.effective_resume.url }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary cc-btn-outline">
+                                                        <a href="{% url 'download_applicant_resume' application.id %}?inline=1" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary cc-btn-outline">
                                                             <i class="bi bi-file-earmark-pdf me-1"></i> View Resume
                                                         </a>
                                                     {% else %}

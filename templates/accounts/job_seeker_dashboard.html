@@ -6,7 +6,7 @@
 <section class="py-4 py-lg-5">
     <div class="container">
         <!-- Welcome Banner -->
-        <div class="card border-0 shadow-sm mb-4 cc-auth-card">
+        <div class="card border-0 shadow-sm mb-4 cc-auth-card cc-card-accent-top">
             <div class="card-body p-4 p-md-5 d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-4">
                 <div>
                     <span class="badge rounded-pill cc-job-type-badge mb-2">
@@ -18,11 +18,15 @@
                     </p>
                 </div>
                 <div class="d-flex flex-wrap align-items-center gap-3">
-                    <div class="bg-light rounded-3 px-3 py-2 text-center border">
+                    <div class="cc-stat-card">
                         <div class="fw-bold fs-5 text-primary">{{ available_jobs|length }}</div>
                         <div class="small text-muted">Available Jobs</div>
                     </div>
-                    <div class="bg-light rounded-3 px-3 py-2 text-center border">
+                    <a href="{% url 'saved_jobs' %}" class="cc-stat-card text-decoration-none">
+                        <div class="fw-bold fs-5 text-info">{{ saved_jobs_count }}</div>
+                        <div class="small text-muted">Saved Jobs</div>
+                    </a>
+                    <div class="cc-stat-card">
                         <div class="fw-bold fs-5 text-success">{{ total_applications }}</div>
                         <div class="small text-muted">Applied Jobs</div>
                     </div>
@@ -51,10 +55,10 @@
 
                         <dl class="row mb-0 small gy-2">
                             <dt class="col-sm-4 text-muted">Full Name</dt>
-                            <dd class="col-sm-8 fw-semibold mb-1">{{ profile.full_name }}</dd>
+                            <dd class="col-sm-8 fw-semibold mb-1 cc-wrap-anywhere">{{ profile.full_name }}</dd>
 
                             <dt class="col-sm-4 text-muted">Email</dt>
-                            <dd class="col-sm-8 mb-1">{{ request.user.email }}</dd>
+                            <dd class="col-sm-8 mb-1 cc-wrap-anywhere">{{ request.user.email }}</dd>
 
                             <dt class="col-sm-4 text-muted">Phone</dt>
                             <dd class="col-sm-8 mb-1">{{ profile.phone|default:"Not provided" }}</dd>
@@ -85,8 +89,11 @@
                                         <span class="text-success fw-medium">
                                             <i class="bi bi-file-earmark-pdf-fill text-danger me-1"></i>{{ profile.resume_filename }}
                                         </span>
-                                        <a href="{{ profile.resume.url }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary py-0 px-2">
+                                        <a href="{% url 'download_profile_resume' %}?inline=1" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary py-0 px-2">
                                             View PDF
+                                        </a>
+                                        <a href="{% url 'download_profile_resume' %}" class="btn btn-sm btn-outline-secondary py-0 px-2">
+                                            Download
                                         </a>
                                     </div>
                                 {% else %}
@@ -219,9 +226,11 @@
                                     name="{{ form.resume.name }}"
                                     id="{{ form.resume.id_for_label }}"
                                     accept=".pdf,application/pdf"
+                                    data-file-hint="profile-resume-hint"
                                     class="form-control {% if form.resume.errors %}is-invalid{% endif %}"
                                 >
                                 <div class="form-text">{{ form.resume.help_text }}</div>
+                                <div id="profile-resume-hint" class="form-text"></div>
                                 {% for error in form.resume.errors %}
                                     <div class="invalid-feedback d-block">{{ error }}</div>
                                 {% endfor %}
@@ -378,6 +387,23 @@
                                                     <a href="{% url 'apply_to_job' job.id %}?next={% url 'applied_jobs' %}" class="btn btn-primary cc-btn-primary btn-sm px-3 fw-semibold w-100">
                                                         Apply Now
                                                     </a>
+                                                {% endif %}
+                                                {% if job.id in saved_job_ids %}
+                                                    <form method="post" action="{% url 'unsave_job' job.id %}" class="d-grid">
+                                                        {% csrf_token %}
+                                                        <input type="hidden" name="next" value="{% url 'job_seeker_dashboard' %}">
+                                                        <button type="submit" class="btn btn-outline-primary btn-sm px-3">
+                                                            <i class="bi bi-bookmark-fill me-1"></i> Saved
+                                                        </button>
+                                                    </form>
+                                                {% else %}
+                                                    <form method="post" action="{% url 'save_job' job.id %}" class="d-grid">
+                                                        {% csrf_token %}
+                                                        <input type="hidden" name="next" value="{% url 'job_seeker_dashboard' %}">
+                                                        <button type="submit" class="btn btn-outline-secondary btn-sm px-3">
+                                                            <i class="bi bi-bookmark me-1"></i> Save Job
+                                                        </button>
+                                                    </form>
                                                 {% endif %}
                                                 <a href="{% url 'job_detail' job.id %}" class="btn btn-outline-secondary btn-sm px-3">
                                                     View Details

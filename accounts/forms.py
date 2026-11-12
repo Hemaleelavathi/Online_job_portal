@@ -240,15 +240,6 @@ class JobSeekerProfileForm(forms.ModelForm):
     def clean_full_name(self):
         return _normalize_full_name(self.cleaned_data.get('full_name'))
 
-    def clean_phone(self):
-        return self.cleaned_data.get('phone', '').strip()
-
-    def clean_location(self):
-        return self.cleaned_data.get('location', '').strip()
-
-    def clean_qualification(self):
-        return self.cleaned_data.get('qualification', '').strip()
-
     def clean_skills(self):
         raw_skills = self.cleaned_data.get('skills', '')
         return ', '.join([item.strip() for item in raw_skills.split(',') if item.strip()])
@@ -256,9 +247,21 @@ class JobSeekerProfileForm(forms.ModelForm):
     def clean_resume(self):
         return validate_pdf_resume(self.cleaned_data.get('resume'))
 
+    def clean(self):
+        cleaned_data = super().clean()
+        return _strip_cleaned_fields(cleaned_data, ('phone', 'location', 'qualification'))
+
     def save(self, commit=True):
         profile = super().save(commit=False)
         return _save_profile_with_user_name(profile, commit=commit)
+
+
+def _strip_cleaned_fields(cleaned_data, field_names):
+    """Strip surrounding whitespace from optional text fields in cleaned form data."""
+    for field_name in field_names:
+        if isinstance(cleaned_data.get(field_name), str):
+            cleaned_data[field_name] = cleaned_data[field_name].strip()
+    return cleaned_data
 
 
 def _save_profile_with_user_name(profile, commit=True):
@@ -320,14 +323,9 @@ class EmployerProfileForm(forms.ModelForm):
             raise ValidationError('Please enter your company name (at least 2 characters).')
         return company_name
 
-    def clean_company_description(self):
-        return self.cleaned_data.get('company_description', '').strip()
-
-    def clean_location(self):
-        return self.cleaned_data.get('location', '').strip()
-
-    def clean_phone(self):
-        return self.cleaned_data.get('phone', '').strip()
+    def clean(self):
+        cleaned_data = super().clean()
+        return _strip_cleaned_fields(cleaned_data, ('company_description', 'location', 'phone'))
 
     def save(self, commit=True):
         profile = super().save(commit=False)

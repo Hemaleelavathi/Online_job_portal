@@ -7,7 +7,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
-from jobs.models import Job, JobApplication
+from jobs.models import Job, JobApplication, SavedJob
 
 from .decorators import (
     get_dashboard_url_name,
@@ -15,6 +15,7 @@ from .decorators import (
     role_required,
     staff_required,
 )
+from .files import serve_pdf_file
 from .forms import EmployerProfileForm, JobSeekerProfileForm, LoginForm, RegistrationForm
 from .models import UserProfile
 
@@ -122,6 +123,9 @@ def job_seeker_dashboard(request):
         .prefetch_related('status_history')
     )
     applied_job_ids = set(base_applications.values_list('job_id', flat=True))
+    saved_job_ids = set(
+        SavedJob.objects.filter(user=request.user).values_list('job_id', flat=True)
+    )
     status_summary = JobApplication.status_summary(base_applications)
     applications, selected_status, is_valid = JobApplication.filter_by_status(
         base_applications,
@@ -143,7 +147,21 @@ def job_seeker_dashboard(request):
             'status_summary': status_summary,
             'selected_status': selected_status,
             'applied_job_ids': applied_job_ids,
+            'saved_job_ids': saved_job_ids,
+            'saved_jobs_count': len(saved_job_ids),
         },
+    )
+
+
+@login_required
+def download_profile_resume(request):
+    """Serve the authenticated user's own profile PDF resume securely."""
+    profile = getattr(request.user, 'profile', None)
+    resume_field = profile.resume if profile else None
+    return serve_pdf_file(
+        resume_field,
+        filename=profile.resume_filename if profile else '',
+        inline=(request.GET.get('inline') == '1'),
     )
 
 
